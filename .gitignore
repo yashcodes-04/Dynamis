@@ -1,0 +1,20 @@
+# Compiled output & binaries
+/bin/
+/target/
+*.class
+
+# Sensitive credentials - do not commit database passwords
+db.properties
+
+# IDE and Editor configurations
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# OS and Temporary files
+sources.txt
+Thumbs.db
+.DS_Store

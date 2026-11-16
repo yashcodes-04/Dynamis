@@ -1,0 +1,6 @@
+# Database Connection Configuration for Dynamis Gym Portal
+# Copy this file to 'db.properties' and fill in your credentials
+
+db.url=jdbc:mysql://localhost:3306/gymdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+db.user=root
+db.password=YOUR_MYSQL_PASSWORD_HERE
