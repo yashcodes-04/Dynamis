@@ -1,3 +1,4 @@
+-- Date: 2026-11-16 - Yash
 -- Schema for Gym Website Authentication System
 CREATE DATABASE IF NOT EXISTS gymdb;
 USE gymdb;

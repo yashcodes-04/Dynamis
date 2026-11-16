@@ -1,5 +1,7 @@
 # Dynamis Gym - Multi-Role Authentication & Workspace Portal
 
+> **Date:** 2026-11-16  |  **Author:** Yash
+
 A modern desktop application built using **Java Swing** and **MySQL Workbench (`gymdb`)** featuring role-based authentication and 4 dedicated role workspaces:
 1. **Gym Member**
 2. **Receptionist**
