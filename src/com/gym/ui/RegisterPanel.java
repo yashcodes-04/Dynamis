@@ -56,31 +56,8 @@ public class RegisterPanel extends JPanel {
         card.setOpaque(false);
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBorder(new EmptyBorder(32, 42, 32, 42));
-        card.setPreferredSize(new Dimension(500, 750));
-        card.setMaximumSize(new Dimension(500, 750));
-
-        // Brand Emblem "D"
-        JPanel logoBadge = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(Theme.ACCENT_PRIMARY);
-                g2.fillOval(2, 2, 44, 44);
-                g2.setColor(Color.WHITE);
-                g2.setFont(new Font("Segoe UI", Font.BOLD, 24));
-                FontMetrics fm = g2.getFontMetrics();
-                int x = (48 - fm.stringWidth("D")) / 2;
-                int y = ((48 - fm.getHeight()) / 2) + fm.getAscent();
-                g2.drawString("D", x, y);
-                g2.dispose();
-            }
-        };
-        logoBadge.setPreferredSize(new Dimension(48, 48));
-        logoBadge.setMaximumSize(new Dimension(48, 48));
-        logoBadge.setOpaque(false);
-        logoBadge.setAlignmentX(Component.CENTER_ALIGNMENT);
+        card.setPreferredSize(new Dimension(500, 700));
+        card.setMaximumSize(new Dimension(500, 700));
 
         // Header - Full "Create Your Account" without truncation
         JLabel brandLabel = new JLabel("Create Your Account");
@@ -195,8 +172,6 @@ public class RegisterPanel extends JPanel {
         backFooter.add(backLink);
 
         // Assemble Card with all components centered
-        card.add(logoBadge);
-        card.add(Box.createVerticalStrut(6));
         card.add(brandLabel);
         card.add(Box.createVerticalStrut(4));
         card.add(subtitleLabel);
