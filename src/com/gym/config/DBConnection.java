@@ -134,8 +134,21 @@ public class DBConnection {
                 + "role ENUM('MEMBER', 'RECEPTIONIST', 'TRAINER', 'OWNER') NOT NULL,"
                 + "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
                 + ");";
+
+        String createFeePaymentsSQL = "CREATE TABLE IF NOT EXISTS fee_payments ("
+                + "id INT AUTO_INCREMENT PRIMARY KEY,"
+                + "member_email VARCHAR(100) NOT NULL,"
+                + "member_name VARCHAR(100) NOT NULL,"
+                + "plan_type VARCHAR(50) NOT NULL,"
+                + "amount DECIMAL(10, 2) NOT NULL,"
+                + "payment_mode VARCHAR(50) NOT NULL,"
+                + "payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
+                + "renewal_due_date DATE NOT NULL"
+                + ");";
+
         try (Statement stmt = conn.createStatement()) {
             stmt.execute(createTableSQL);
+            stmt.execute(createFeePaymentsSQL);
         } catch (SQLException e) {
             System.err.println("Note on table check: " + e.getMessage());
         }
