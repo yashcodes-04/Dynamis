@@ -30,39 +30,43 @@ public class UserDAO {
         return false;
     }
 
-    private String generateUniqueGymId(Connection conn) throws SQLException {
-        String query = "SELECT COALESCE(MAX(id), 0) + 1 FROM users";
-        try (Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(query)) {
-            if (rs.next()) {
-                int nextId = 1000 + rs.getInt(1);
-                return "GYM-" + nextId;
-            }
-        }
-        return "GYM-" + (1000 + (int)(Math.random() * 8999));
-    }
-
+    /**
+     * Registers a new user. The unique Gym ID is tied directly to the database AUTO_INCREMENT primary key
+     * ensuring consecutive, collision-free, and thread-safe auto-incrementing Gym IDs (e.g. GYM-1001, GYM-1002).
+     */
     public boolean register(String fullName, String email, String phone, String plainPassword, Role role) throws SQLException {
         if (isEmailTaken(email)) {
             return false;
         }
 
         String passwordHash = PasswordUtil.hashPassword(plainPassword);
-        String insertSQL = "INSERT INTO users (gym_id, full_name, email, phone, password_hash, role) VALUES (?, ?, ?, ?, ?, ?)";
+        String insertSQL = "INSERT INTO users (full_name, email, phone, password_hash, role) VALUES (?, ?, ?, ?, ?)";
 
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(insertSQL)) {
-            String gymId = generateUniqueGymId(conn);
-            ps.setString(1, gymId);
-            ps.setString(2, fullName.trim());
-            ps.setString(3, email.trim().toLowerCase());
-            ps.setString(4, phone != null ? phone.trim() : "");
-            ps.setString(5, passwordHash);
-            ps.setString(6, role.name());
+             PreparedStatement ps = conn.prepareStatement(insertSQL, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, fullName.trim());
+            ps.setString(2, email.trim().toLowerCase());
+            ps.setString(3, phone != null ? phone.trim() : "");
+            ps.setString(4, passwordHash);
+            ps.setString(5, role.name());
 
             int rows = ps.executeUpdate();
-            return rows > 0;
+            if (rows > 0) {
+                try (ResultSet keys = ps.getGeneratedKeys()) {
+                    if (keys.next()) {
+                        int autoId = keys.getInt(1);
+                        String autoGymId = "GYM-" + (1000 + autoId);
+                        try (PreparedStatement updatePs = conn.prepareStatement("UPDATE users SET gym_id = ? WHERE id = ?")) {
+                            updatePs.setString(1, autoGymId);
+                            updatePs.setInt(2, autoId);
+                            updatePs.executeUpdate();
+                        }
+                    }
+                }
+                return true;
+            }
         }
+        return false;
     }
 
     public User authenticate(String email, String plainPassword) throws SQLException {
