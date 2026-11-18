@@ -216,7 +216,7 @@ public class ReceptionistDashboard extends BaseDashboard {
         subtitle1.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         verifySearchField = Theme.createStyledTextField();
-        verifySearchField.setToolTipText("Enter Gym ID (e.g. GYM-1001) or Email Address");
+        verifySearchField.setToolTipText("Enter Gym ID / Roll No. (e.g. 20261001) or Email Address");
         verifySearchField.addActionListener(e -> handleMemberVerification());
 
         JButton verifyBtn = Theme.createPrimaryButton("Verify Member");
@@ -613,7 +613,7 @@ public class ReceptionistDashboard extends BaseDashboard {
         subtitle.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         attendanceGymIdField = Theme.createStyledTextField();
-        attendanceGymIdField.setToolTipText("Enter Gym ID (e.g. GYM-1001) and press Enter");
+        attendanceGymIdField.setToolTipText("Enter Gym ID / Roll No. (e.g. 20261001) and press Enter");
         attendanceGymIdField.addActionListener(e -> handleMarkAttendance());
 
         markPresentBtn = Theme.createPrimaryButton("Mark Present");

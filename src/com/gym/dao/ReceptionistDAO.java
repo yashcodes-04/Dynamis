@@ -17,7 +17,7 @@ import java.util.List;
 public class ReceptionistDAO {
 
     /**
-     * Looks up a registered member by Gym ID (e.g. GYM-1001) or Email Address
+     * Looks up a registered member by Gym ID / Roll No (e.g. 20261001) or Email Address
      */
     public User findMemberByGymIdOrEmail(String identifier) throws SQLException {
         if (identifier == null || identifier.trim().isEmpty()) {
@@ -36,7 +36,8 @@ public class ReceptionistDAO {
                 if (rs.next()) {
                     User user = new User();
                     user.setId(rs.getInt("id"));
-                    user.setGymId(rs.getString("gym_id") != null ? rs.getString("gym_id") : ("GYM-" + (1000 + rs.getInt("id"))));
+                    String fallbackId = LocalDate.now().getYear() + "" + (1000 + rs.getInt("id"));
+                    user.setGymId(rs.getString("gym_id") != null ? rs.getString("gym_id") : fallbackId);
                     user.setFullName(rs.getString("full_name"));
                     user.setEmail(rs.getString("email"));
                     user.setPhone(rs.getString("phone"));

@@ -13,6 +13,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.LocalDate;
 
 public class UserDAO {
 
@@ -31,8 +32,8 @@ public class UserDAO {
     }
 
     /**
-     * Registers a new user. The unique Gym ID is tied directly to the database AUTO_INCREMENT primary key
-     * ensuring consecutive, collision-free, and thread-safe auto-incrementing Gym IDs (e.g. GYM-1001, GYM-1002).
+     * Registers a new user. The unique Gym ID is formatted like a roll number:
+     * Year + (1000 + autoIncrementId) -> e.g. 20261001, 20261002
      */
     public boolean register(String fullName, String email, String phone, String plainPassword, Role role) throws SQLException {
         if (isEmailTaken(email)) {
@@ -55,9 +56,11 @@ public class UserDAO {
                 try (ResultSet keys = ps.getGeneratedKeys()) {
                     if (keys.next()) {
                         int autoId = keys.getInt(1);
-                        String autoGymId = "GYM-" + (1000 + autoId);
+                        int year = LocalDate.now().getYear();
+                        String rollGymId = String.valueOf(year) + (1000 + autoId); // e.g. 20261001
+
                         try (PreparedStatement updatePs = conn.prepareStatement("UPDATE users SET gym_id = ? WHERE id = ?")) {
-                            updatePs.setString(1, autoGymId);
+                            updatePs.setString(1, rollGymId);
                             updatePs.setInt(2, autoId);
                             updatePs.executeUpdate();
                         }
@@ -79,9 +82,14 @@ public class UserDAO {
                 if (rs.next()) {
                     String storedHash = rs.getString("password_hash");
                     if (PasswordUtil.verifyPassword(plainPassword, storedHash)) {
+                        int year = rs.getTimestamp("created_at") != null
+                                ? rs.getTimestamp("created_at").toLocalDateTime().getYear()
+                                : LocalDate.now().getYear();
+                        String fallbackId = String.valueOf(year) + (1000 + rs.getInt("id"));
+
                         return new User(
                                 rs.getInt("id"),
-                                rs.getString("gym_id") != null ? rs.getString("gym_id") : ("GYM-" + (1000 + rs.getInt("id"))),
+                                rs.getString("gym_id") != null ? rs.getString("gym_id") : fallbackId,
                                 rs.getString("full_name"),
                                 rs.getString("email"),
                                 rs.getString("phone"),

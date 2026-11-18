@@ -5,6 +5,7 @@ USE gymdb;
 
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    -- Roll Number format: Year + (1000 + auto_increment id), e.g. 20261001, 20261002
     gym_id VARCHAR(20) UNIQUE,
     full_name VARCHAR(100) NOT NULL,
     email VARCHAR(100) NOT NULL UNIQUE,

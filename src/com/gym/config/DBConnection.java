@@ -168,7 +168,7 @@ public class DBConnection {
                         stmt.execute("ALTER TABLE users ADD COLUMN gym_id VARCHAR(20) UNIQUE AFTER id");
                     }
                 }
-                stmt.execute("UPDATE users SET gym_id = CONCAT('GYM-', 1000 + id) WHERE gym_id IS NULL OR gym_id = ''");
+                stmt.execute("UPDATE users SET gym_id = CONCAT(YEAR(COALESCE(created_at, NOW())), 1000 + id) WHERE gym_id IS NULL OR gym_id = '' OR gym_id LIKE 'GYM-%'");
             } catch (Exception ex) {
                 System.err.println("Note on users gym_id migration: " + ex.getMessage());
             }
