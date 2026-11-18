@@ -26,7 +26,7 @@ public class OwnerDashboard extends BaseDashboard {
         // Top Metrics
         JPanel metricsContainer = new JPanel(new GridLayout(1, 4, 15, 0));
         metricsContainer.setOpaque(false);
-        metricsContainer.add(createMetricCard("TOTAL REVENUE", "$48,250", "+18.4% this quarter", Theme.ROLE_OWNER_COLOR));
+        metricsContainer.add(createMetricCard("TOTAL REVENUE", "Rs. 3,85,000", "+18.4% this quarter", Theme.ROLE_OWNER_COLOR));
         metricsContainer.add(createMetricCard("ACTIVE MEMBERS", "520 Active", "94% retention rate", Theme.ROLE_MEMBER_COLOR));
         metricsContainer.add(createMetricCard("TRAINER STAFF", "12 Trainers", "Avg rating: 4.9 / 5.0", Theme.ROLE_TRAINER_COLOR));
         metricsContainer.add(createMetricCard("NEW SIGNUPS", "34 Members", "Joined this week", Theme.SUCCESS_COLOR));

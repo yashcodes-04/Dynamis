@@ -46,12 +46,12 @@ public class ReceptionistDashboard extends BaseDashboard {
 
     // Plan data maps
     private final String[] plans = {
-            "Monthly Pass (1 Month)",
-            "Quarterly Pass (3 Months)",
-            "Half-Yearly Pass (6 Months)",
-            "Annual Pass (12 Months)"
+            "Monthly Pass (1 Month) - Rs. 1,500",
+            "Quarterly Pass (3 Months) - Rs. 4,000",
+            "Half-Yearly Pass (6 Months) - Rs. 7,500",
+            "Annual Pass (12 Months) - Rs. 13,500"
     };
-    private final double[] planPrices = {50.0, 135.0, 250.0, 450.0};
+    private final double[] planPrices = {1500.0, 4000.0, 7500.0, 13500.0};
     private final int[] planMonths = {1, 3, 6, 12};
 
     public ReceptionistDashboard(MainFrame mainFrame) {
@@ -67,7 +67,7 @@ public class ReceptionistDashboard extends BaseDashboard {
         JPanel metricsContainer = new JPanel(new GridLayout(1, 4, 15, 0));
         metricsContainer.setOpaque(false);
 
-        metricsContainer.add(createMetricCard("TOTAL REVENUE COLLECTED", "$0.00", "All time renewals", Theme.SUCCESS_COLOR, totalRevenueVal = new JLabel("$0.00")));
+        metricsContainer.add(createMetricCard("TOTAL REVENUE COLLECTED", "Rs. 0.00", "All time renewals", Theme.SUCCESS_COLOR, totalRevenueVal = new JLabel("Rs. 0.00")));
         metricsContainer.add(createMetricCard("RENEWALS RECORDED", "0", "Completed transactions", Theme.ROLE_RECEPTIONIST_COLOR, totalRenewalsVal = new JLabel("0")));
         metricsContainer.add(createMetricCard("TODAY'S DATE", LocalDate.now().toString(), "Desk active", Theme.ROLE_MEMBER_COLOR, todayDateVal = new JLabel(LocalDate.now().toString())));
         metricsContainer.add(createMetricCard("DESK OPERATION", "ONLINE", "Ready for check-ins", Theme.ROLE_TRAINER_COLOR, new JLabel("ONLINE")));
@@ -174,7 +174,7 @@ public class ReceptionistDashboard extends BaseDashboard {
         addFormField(card, "Member Email Address", emailRow);
         addFormField(card, "Member Full Name", memberNameField);
         addFormField(card, "Membership Plan", planComboBox);
-        addFormField(card, "Fee Amount ($)", amountField);
+        addFormField(card, "Fee Amount (Rs.)", amountField);
         addFormField(card, "Payment Mode", paymentModeComboBox);
 
         card.add(renewalPreviewLabel);
@@ -241,7 +241,7 @@ public class ReceptionistDashboard extends BaseDashboard {
         card.add(topBar, BorderLayout.NORTH);
 
         // Table
-        String[] cols = {"ID", "Payment Date", "Member Name", "Email", "Plan", "Amount", "Mode", "Renewal Due"};
+        String[] cols = {"ID", "Payment Date", "Member Name", "Email", "Plan", "Amount (Rs.)", "Mode", "Renewal Due"};
         tableModel = new DefaultTableModel(cols, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -423,14 +423,14 @@ public class ReceptionistDashboard extends BaseDashboard {
                                 fp.getMemberName(),
                                 fp.getMemberEmail(),
                                 fp.getPlanType(),
-                                String.format("$%.2f", fp.getAmount()),
+                                String.format("Rs. %.2f", fp.getAmount()),
                                 fp.getPaymentMode(),
                                 fp.getRenewalDueDate() != null ? fp.getRenewalDueDate().toString() : "N/A"
                         });
                     }
 
                     // Update Top Metric Counters
-                    totalRevenueVal.setText(String.format("$%.2f", totalRevenue));
+                    totalRevenueVal.setText(String.format("Rs. %.2f", totalRevenue));
                     totalRenewalsVal.setText(String.valueOf(totalCount));
                     recordCountLabel.setText("Showing " + list.size() + " of " + totalCount + " records");
                 } catch (Exception ex) {
