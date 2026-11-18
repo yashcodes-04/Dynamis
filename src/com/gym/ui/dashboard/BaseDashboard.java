@@ -176,19 +176,34 @@ public abstract class BaseDashboard extends JPanel {
         table.setShowHorizontalLines(true);
         table.setSelectionBackground(Theme.ACCENT_PRIMARY);
         table.setSelectionForeground(Color.WHITE);
+        table.setFillsViewportHeight(true);
 
-        table.getTableHeader().setBackground(new Color(32, 36, 48));
-        table.getTableHeader().setForeground(new Color(220, 224, 233));
-        table.getTableHeader().setFont(Theme.FONT_BOLD);
+        // Header Styling - Crisp black text for maximum visibility
+        DefaultTableCellRenderer headerRenderer = new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable tbl, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(tbl, value, isSelected, false, row, column);
+                c.setFont(new Font("Segoe UI", Font.BOLD, 13));
+                c.setForeground(new Color(15, 15, 18)); // Solid black text
+                c.setBackground(new Color(228, 231, 238)); // Light clean header background
+                ((JLabel) c).setHorizontalAlignment(JLabel.LEFT);
+                ((JLabel) c).setBorder(new EmptyBorder(0, 10, 0, 10));
+                return c;
+            }
+        };
+        table.getTableHeader().setDefaultRenderer(headerRenderer);
         table.getTableHeader().setPreferredSize(new Dimension(table.getTableHeader().getWidth(), 36));
-        table.getTableHeader().setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.CARD_BORDER));
+        table.getTableHeader().setReorderingAllowed(false);
 
-        // Alternating row renderer with padding
+        // Row renderer with padding, alternating rows, and smooth selection (no white focused cell)
         table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable tbl, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-                Component c = super.getTableCellRendererComponent(tbl, value, isSelected, hasFocus, row, column);
-                if (!isSelected) {
+                Component c = super.getTableCellRendererComponent(tbl, value, isSelected, false, row, column);
+                if (isSelected) {
+                    c.setBackground(Theme.ACCENT_PRIMARY);
+                    c.setForeground(Color.WHITE);
+                } else {
                     c.setBackground(row % 2 == 0 ? Theme.CARD_BG : new Color(30, 34, 46));
                     c.setForeground(Theme.TEXT_LIGHT);
                 }
