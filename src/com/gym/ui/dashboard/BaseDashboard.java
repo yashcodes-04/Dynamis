@@ -119,7 +119,8 @@ public abstract class BaseDashboard extends JPanel {
     public void refreshUserInfo() {
         User user = UserSession.getCurrentUser();
         if (user != null) {
-            welcomeLabel.setText("Welcome, " + user.getFullName());
+            String idDisplay = user.getGymId() != null ? " [" + user.getGymId() + "]" : "";
+            welcomeLabel.setText("Welcome, " + user.getFullName() + idDisplay);
             roleBadge.setText("  " + user.getRole().getDisplayName() + "  ");
             roleBadge.setBackground(getRoleColor(user.getRole()));
             roleBadge.repaint();

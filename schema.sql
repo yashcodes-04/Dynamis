@@ -5,6 +5,7 @@ USE gymdb;
 
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    gym_id VARCHAR(20) UNIQUE,
     full_name VARCHAR(100) NOT NULL,
     email VARCHAR(100) NOT NULL UNIQUE,
     phone VARCHAR(20),
@@ -16,6 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- Fee Payments & Membership Renewal History
 CREATE TABLE IF NOT EXISTS fee_payments (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    gym_id VARCHAR(20),
     member_email VARCHAR(100) NOT NULL,
     member_name VARCHAR(100) NOT NULL,
     plan_type VARCHAR(50) NOT NULL,
@@ -23,6 +25,15 @@ CREATE TABLE IF NOT EXISTS fee_payments (
     payment_mode VARCHAR(50) NOT NULL,
     payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     renewal_due_date DATE NOT NULL
+);
+
+-- Member Attendance & Check-In Log
+CREATE TABLE IF NOT EXISTS attendance (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    gym_id VARCHAR(20) NOT NULL,
+    member_name VARCHAR(100) NOT NULL,
+    member_email VARCHAR(100) NOT NULL,
+    check_in_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Optional: Initial Seed Users for testing each role if needed (passwords: 'admin123' hashed)

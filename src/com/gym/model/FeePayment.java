@@ -1,5 +1,5 @@
 /**
- * Date: 2026-11-17 - Yash
+ * Date: 2026-11-18 - Yash
  */
 package com.gym.model;
 
@@ -8,6 +8,7 @@ import java.sql.Timestamp;
 
 public class FeePayment {
     private int id;
+    private String gymId;
     private String memberEmail;
     private String memberName;
     private String planType;
@@ -18,9 +19,10 @@ public class FeePayment {
 
     public FeePayment() {}
 
-    public FeePayment(int id, String memberEmail, String memberName, String planType,
+    public FeePayment(int id, String gymId, String memberEmail, String memberName, String planType,
                       double amount, String paymentMode, Timestamp paymentDate, Date renewalDueDate) {
         this.id = id;
+        this.gymId = gymId;
         this.memberEmail = memberEmail;
         this.memberName = memberName;
         this.planType = planType;
@@ -36,6 +38,14 @@ public class FeePayment {
 
     public void setId(int id) {
         this.id = id;
+    }
+
+    public String getGymId() {
+        return gymId;
+    }
+
+    public void setGymId(String gymId) {
+        this.gymId = gymId;
     }
 
     public String getMemberEmail() {

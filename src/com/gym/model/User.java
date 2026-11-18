@@ -7,6 +7,7 @@ import java.sql.Timestamp;
 
 public class User {
     private int id;
+    private String gymId;
     private String fullName;
     private String email;
     private String phone;
@@ -16,8 +17,9 @@ public class User {
 
     public User() {}
 
-    public User(int id, String fullName, String email, String phone, String passwordHash, Role role, Timestamp createdAt) {
+    public User(int id, String gymId, String fullName, String email, String phone, String passwordHash, Role role, Timestamp createdAt) {
         this.id = id;
+        this.gymId = gymId;
         this.fullName = fullName;
         this.email = email;
         this.phone = phone;
@@ -40,6 +42,14 @@ public class User {
 
     public void setId(int id) {
         this.id = id;
+    }
+
+    public String getGymId() {
+        return gymId;
+    }
+
+    public void setGymId(String gymId) {
+        this.gymId = gymId;
     }
 
     public String getFullName() {

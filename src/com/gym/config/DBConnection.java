@@ -8,6 +8,7 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
@@ -127,6 +128,7 @@ public class DBConnection {
     private static void initTable(Connection conn) {
         String createTableSQL = "CREATE TABLE IF NOT EXISTS users ("
                 + "id INT AUTO_INCREMENT PRIMARY KEY,"
+                + "gym_id VARCHAR(20) UNIQUE,"
                 + "full_name VARCHAR(100) NOT NULL,"
                 + "email VARCHAR(100) NOT NULL UNIQUE,"
                 + "phone VARCHAR(20),"
@@ -137,6 +139,7 @@ public class DBConnection {
 
         String createFeePaymentsSQL = "CREATE TABLE IF NOT EXISTS fee_payments ("
                 + "id INT AUTO_INCREMENT PRIMARY KEY,"
+                + "gym_id VARCHAR(20),"
                 + "member_email VARCHAR(100) NOT NULL,"
                 + "member_name VARCHAR(100) NOT NULL,"
                 + "plan_type VARCHAR(50) NOT NULL,"
@@ -146,9 +149,45 @@ public class DBConnection {
                 + "renewal_due_date DATE NOT NULL"
                 + ");";
 
+        String createAttendanceSQL = "CREATE TABLE IF NOT EXISTS attendance ("
+                + "id INT AUTO_INCREMENT PRIMARY KEY,"
+                + "gym_id VARCHAR(20) NOT NULL,"
+                + "member_name VARCHAR(100) NOT NULL,"
+                + "member_email VARCHAR(100) NOT NULL,"
+                + "check_in_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+                + ");";
+
         try (Statement stmt = conn.createStatement()) {
             stmt.execute(createTableSQL);
+
+            // Add gym_id to users if not present and backfill existing users
+            try {
+                java.sql.DatabaseMetaData meta = conn.getMetaData();
+                try (ResultSet rs = meta.getColumns(null, null, "users", "gym_id")) {
+                    if (!rs.next()) {
+                        stmt.execute("ALTER TABLE users ADD COLUMN gym_id VARCHAR(20) UNIQUE AFTER id");
+                    }
+                }
+                stmt.execute("UPDATE users SET gym_id = CONCAT('GYM-', 1000 + id) WHERE gym_id IS NULL OR gym_id = ''");
+            } catch (Exception ex) {
+                System.err.println("Note on users gym_id migration: " + ex.getMessage());
+            }
+
             stmt.execute(createFeePaymentsSQL);
+
+            // Add gym_id to fee_payments if not present
+            try {
+                java.sql.DatabaseMetaData meta = conn.getMetaData();
+                try (ResultSet rs = meta.getColumns(null, null, "fee_payments", "gym_id")) {
+                    if (!rs.next()) {
+                        stmt.execute("ALTER TABLE fee_payments ADD COLUMN gym_id VARCHAR(20) AFTER id");
+                    }
+                }
+            } catch (Exception ex) {
+                System.err.println("Note on fee_payments gym_id migration: " + ex.getMessage());
+            }
+
+            stmt.execute(createAttendanceSQL);
         } catch (SQLException e) {
             System.err.println("Note on table check: " + e.getMessage());
         }
