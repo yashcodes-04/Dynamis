@@ -157,6 +157,21 @@ public class DBConnection {
                 + "check_in_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
                 + ");";
 
+        String createBookedSessionsSQL = "CREATE TABLE IF NOT EXISTS booked_sessions ("
+                + "id INT AUTO_INCREMENT PRIMARY KEY,"
+                + "gym_id VARCHAR(20),"
+                + "member_email VARCHAR(100) NOT NULL,"
+                + "member_name VARCHAR(100) NOT NULL,"
+                + "class_name VARCHAR(100) NOT NULL,"
+                + "description VARCHAR(255),"
+                + "level VARCHAR(50),"
+                + "duration VARCHAR(50) NOT NULL,"
+                + "price DECIMAL(10, 2) NOT NULL,"
+                + "schedule_slot VARCHAR(100),"
+                + "status VARCHAR(50) DEFAULT 'CONFIRMED',"
+                + "booking_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+                + ");";
+
         try (Statement stmt = conn.createStatement()) {
             stmt.execute(createTableSQL);
 
@@ -188,6 +203,7 @@ public class DBConnection {
             }
 
             stmt.execute(createAttendanceSQL);
+            stmt.execute(createBookedSessionsSQL);
         } catch (SQLException e) {
             System.err.println("Note on table check: " + e.getMessage());
         }

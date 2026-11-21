@@ -8,6 +8,7 @@ import com.gym.model.User;
 import com.gym.session.UserSession;
 import com.gym.ui.MainFrame;
 import com.gym.ui.Theme;
+import com.gym.ui.ThemedDialog;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -76,13 +77,15 @@ public abstract class BaseDashboard extends JPanel {
 
         JButton logoutButton = Theme.createSecondaryButton("Sign Out");
         logoutButton.addActionListener(e -> {
-            int confirm = JOptionPane.showConfirmDialog(
+            boolean confirm = ThemedDialog.showConfirm(
                     this,
-                    "Are you sure you want to sign out?",
                     "Sign Out Confirmation",
-                    JOptionPane.YES_NO_OPTION
+                    "Sign Out?",
+                    "Are you sure you want to sign out of your workspace session?",
+                    "Sign Out",
+                    "Stay"
             );
-            if (confirm == JOptionPane.YES_OPTION) {
+            if (confirm) {
                 UserSession.logout();
                 mainFrame.showCard(MainFrame.CARD_LOGIN);
             }

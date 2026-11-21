@@ -96,6 +96,40 @@ public class ReceptionistDAO implements GenericDAO<FeePayment, Integer> {
     }
 
     /**
+     * Retrieves the latest fee payment and membership renewal date for a member.
+     */
+    public FeePayment getLatestFeePayment(String gymId, String email) {
+        String sql = "SELECT id, gym_id, member_email, member_name, plan_type, amount, payment_mode, payment_date, renewal_due_date "
+                + "FROM fee_payments WHERE (LOWER(gym_id) = ? AND gym_id != '') OR LOWER(member_email) = ? "
+                + "ORDER BY payment_date DESC, id DESC LIMIT 1";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, gymId != null ? gymId.trim().toLowerCase() : "");
+            ps.setString(2, email != null ? email.trim().toLowerCase() : "");
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    FeePayment fp = new FeePayment();
+                    fp.setId(rs.getInt("id"));
+                    fp.setGymId(rs.getString("gym_id"));
+                    fp.setMemberEmail(rs.getString("member_email"));
+                    fp.setMemberName(rs.getString("member_name"));
+                    fp.setPlanType(rs.getString("plan_type"));
+                    fp.setAmount(rs.getDouble("amount"));
+                    fp.setPaymentMode(rs.getString("payment_mode"));
+                    fp.setPaymentDate(rs.getTimestamp("payment_date"));
+                    fp.setRenewalDueDate(rs.getDate("renewal_due_date"));
+                    return fp;
+                }
+            }
+        } catch (Exception ex) {
+            System.err.println("Note on loading member fee payment: " + ex.getMessage());
+        }
+        return null;
+    }
+
+    /**
      * Retrieves renewal and payment history from MySQL and applies Java Stream API (Lecture 21-23).
      */
     public List<FeePayment> getRenewalHistory(String filter) throws SQLException {

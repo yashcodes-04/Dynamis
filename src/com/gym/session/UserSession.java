@@ -7,6 +7,7 @@ import com.gym.model.Role;
 import com.gym.model.User;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 
 public class UserSession {
     private static User currentUser;
@@ -34,6 +35,20 @@ public class UserSession {
         membershipPlan = plan;
         membershipPrice = price;
         renewalDueDate = LocalDate.now().plusMonths(months);
+    }
+
+    public static void setMembership(String plan, double price, LocalDate dueDate) {
+        membershipPlan = plan;
+        membershipPrice = price;
+        renewalDueDate = dueDate;
+    }
+
+    public static long getDaysLeft() {
+        if (renewalDueDate == null) {
+            return 30;
+        }
+        long days = ChronoUnit.DAYS.between(LocalDate.now(), renewalDueDate);
+        return Math.max(0, days);
     }
 
     public static String getMembershipPlan() {

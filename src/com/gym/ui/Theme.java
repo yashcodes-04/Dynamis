@@ -44,6 +44,18 @@ public class Theme {
     public static final Font FONT_BOLD = new Font("Segoe UI", Font.BOLD, 14);
     public static final Font FONT_SMALL = new Font("Segoe UI", Font.PLAIN, 12);
 
+    static {
+        try {
+            UIManager.put("OptionPane.background", CARD_BG);
+            UIManager.put("Panel.background", CARD_BG);
+            UIManager.put("OptionPane.messageForeground", TEXT_LIGHT);
+            UIManager.put("OptionPane.messageFont", FONT_BODY);
+            UIManager.put("Button.background", ACCENT_SECONDARY);
+            UIManager.put("Button.foreground", TEXT_LIGHT);
+            UIManager.put("Button.font", FONT_BOLD);
+        } catch (Exception ignored) {}
+    }
+
     public static JTextField createStyledTextField() {
         JTextField field = new JTextField();
         field.setBackground(INPUT_BG);

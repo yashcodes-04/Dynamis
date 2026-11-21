@@ -268,11 +268,10 @@ public class ChooseMembershipPanel extends JPanel {
         if (selectedPlan == null) {
             messageLabel.setText("⚠️ You cannot open Member Dashboard without choosing a membership plan!");
             messageLabel.setForeground(Theme.ERROR_COLOR);
-            JOptionPane.showMessageDialog(
+            ThemedDialog.showWarning(
                     this,
-                    "Please select one of the 4 membership plans to activate your membership.\nWithout selecting a membership, you cannot open the member's dashboard.",
                     "Membership Selection Required",
-                    JOptionPane.WARNING_MESSAGE
+                    "Please select one of the 4 membership plans to activate your membership.\nWithout selecting a membership, you cannot open the member's dashboard."
             );
             return;
         }
