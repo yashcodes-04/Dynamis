@@ -1,24 +1,37 @@
 /**
  * Date: 2026-11-18 - Yash
+ * Syllabus: Unit 1 (Lecture 3) - Custom Exception Handling (MemberNotFoundException)
+ *           Unit 2 (Lecture 8) - Comparator & Sorting (FeePayment.BY_AMOUNT_DESC, BY_MEMBER_NAME)
+ *           Unit 3 (Lectures 9-14) - Multithreading & Runnable (LiveDeskTracker daemon thread)
+ *           Unit 5 (Lectures 21-23) - Lambdas & Stream API
+ *           Unit 6 (Lectures 25-27) - Character Streams, File Handling & CSV Export
  */
 package com.gym.ui.dashboard;
 
 import com.gym.dao.ReceptionistDAO;
+import com.gym.exception.GymException;
+import com.gym.exception.MemberNotFoundException;
 import com.gym.model.AttendanceRecord;
 import com.gym.model.FeePayment;
 import com.gym.model.Role;
 import com.gym.model.User;
 import com.gym.ui.MainFrame;
 import com.gym.ui.Theme;
+import com.gym.util.FileExportUtil;
+import com.gym.util.LiveDeskTracker;
+import com.gym.util.ReceptionDeskEventQueue;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.io.File;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 public class ReceptionistDashboard extends BaseDashboard {
 
@@ -41,6 +54,9 @@ public class ReceptionistDashboard extends BaseDashboard {
     private JLabel todayCheckinsVal;
     private JLabel totalRevenueVal;
     private JLabel totalRenewalsVal;
+    private JLabel liveClockVal;
+    private JLabel liveEventTicker;
+    private LiveDeskTracker liveDeskTracker;
 
     // ==========================================
     // SCREEN 1: VERIFY MEMBER & FEE ENTRY FIELDS
@@ -77,6 +93,8 @@ public class ReceptionistDashboard extends BaseDashboard {
     private DefaultTableModel renewalTableModel;
     private JTextField renewalSearchField;
     private JLabel renewalCountLabel;
+    private JComboBox<String> sortOrderCombo;
+    private List<FeePayment> currentLoadedPayments;
 
     // ==========================================
     // SCREEN 3: ATTENDANCE FIELDS
@@ -87,11 +105,26 @@ public class ReceptionistDashboard extends BaseDashboard {
     private JTable attendanceTable;
     private DefaultTableModel attendanceTableModel;
     private JLabel attendanceCountLabel;
+    private List<AttendanceRecord> currentLoadedAttendance;
 
     public ReceptionistDashboard(MainFrame mainFrame) {
         super(mainFrame, "Receptionist Workspace", Role.RECEPTIONIST);
         buildDashboard();
+        setupEventListener();
         loadAllData();
+        startLiveDeskThread();
+    }
+
+    private void setupEventListener() {
+        // Syllabus Unit 4 (Lectures 15-16): Consumer thread callback on Swing GUI
+        ReceptionDeskEventQueue.getInstance().setEventListener(eventMsg -> {
+            SwingUtilities.invokeLater(() -> {
+                if (liveEventTicker != null) {
+                    liveEventTicker.setText(eventMsg);
+                    liveEventTicker.setForeground(Theme.ROLE_RECEPTIONIST_COLOR);
+                }
+            });
+        });
     }
 
     private void buildDashboard() {
@@ -104,7 +137,7 @@ public class ReceptionistDashboard extends BaseDashboard {
         metricsContainer.add(createMetricCard("TODAY'S CHECK-INS", "0 Members", "Active today", Theme.ROLE_RECEPTIONIST_COLOR, todayCheckinsVal = new JLabel("0")));
         metricsContainer.add(createMetricCard("TOTAL REVENUE COLLECTED", "Rs. 0.00", "All time renewals", Theme.SUCCESS_COLOR, totalRevenueVal = new JLabel("Rs. 0.00")));
         metricsContainer.add(createMetricCard("RENEWALS RECORDED", "0", "Completed transactions", Theme.ROLE_OWNER_COLOR, totalRenewalsVal = new JLabel("0")));
-        metricsContainer.add(createMetricCard("DESK OPERATION", "ONLINE", "Ready for check-ins", Theme.ROLE_TRAINER_COLOR, new JLabel("ONLINE")));
+        metricsContainer.add(createMetricCard("DESK CLOCK (LIVE THREAD)", "00:00:00 AM", "Background thread", Theme.ROLE_TRAINER_COLOR, liveClockVal = new JLabel("Loading...")));
 
         // 2. Navigation Tab Bar (3 Distinct Screens)
         JPanel navTabBar = buildNavigationTabBar();
@@ -124,8 +157,33 @@ public class ReceptionistDashboard extends BaseDashboard {
 
         contentPanel.add(screensContainer, BorderLayout.CENTER);
 
+        // 5. Bottom Live Ticker Bar (Syllabus Lectures 15-16: Inter-Thread Producer-Consumer Feed)
+        JPanel tickerPanel = new JPanel(new BorderLayout(10, 0));
+        tickerPanel.setOpaque(false);
+        tickerPanel.setBorder(new EmptyBorder(4, 6, 2, 6));
+
+        JLabel tickerPrefix = new JLabel("DESK EVENT FEED: ");
+        tickerPrefix.setFont(Theme.FONT_BOLD);
+        tickerPrefix.setForeground(Theme.ROLE_RECEPTIONIST_COLOR);
+
+        liveEventTicker = new JLabel("System online. Desk event listener active.");
+        liveEventTicker.setFont(Theme.FONT_BODY);
+        liveEventTicker.setForeground(Theme.TEXT_MUTED);
+
+        tickerPanel.add(tickerPrefix, BorderLayout.WEST);
+        tickerPanel.add(liveEventTicker, BorderLayout.CENTER);
+        contentPanel.add(tickerPanel, BorderLayout.SOUTH);
+
         // Default screen
         switchScreen(SCREEN_FEE_ENTRY);
+    }
+
+    /**
+     * Demonstrates Unit 3 (Lectures 9-12): Multithreading, Runnable, Daemon Thread
+     */
+    private void startLiveDeskThread() {
+        liveDeskTracker = new LiveDeskTracker(liveClockVal, null);
+        liveDeskTracker.start();
     }
 
     private JPanel buildNavigationTabBar() {
@@ -172,7 +230,6 @@ public class ReceptionistDashboard extends BaseDashboard {
     private void switchScreen(String screenName) {
         screenCardLayout.show(screensContainer, screenName);
 
-        // Update tab buttons appearance
         tabFeeEntryBtn.setBackground(SCREEN_FEE_ENTRY.equals(screenName) ? Theme.ACCENT_PRIMARY : Theme.ACCENT_SECONDARY);
         tabHistoryBtn.setBackground(SCREEN_RENEWAL_HISTORY.equals(screenName) ? Theme.ACCENT_PRIMARY : Theme.ACCENT_SECONDARY);
         tabAttendanceBtn.setBackground(SCREEN_ATTENDANCE.equals(screenName) ? Theme.ACCENT_PRIMARY : Theme.ACCENT_SECONDARY);
@@ -181,7 +238,6 @@ public class ReceptionistDashboard extends BaseDashboard {
         tabHistoryBtn.repaint();
         tabAttendanceBtn.repaint();
 
-        // Refresh data when switching
         if (SCREEN_RENEWAL_HISTORY.equals(screenName)) {
             loadRenewalData("");
         } else if (SCREEN_ATTENDANCE.equals(screenName)) {
@@ -447,6 +503,8 @@ public class ReceptionistDashboard extends BaseDashboard {
                     boolean success = get();
                     if (success) {
                         setFeeStatus("Success! Fee recorded for " + currentVerifiedMember.getFullName() + " (" + currentVerifiedMember.getGymId() + ")", false);
+                        // Producer thread event generation (Syllabus Lectures 15-16)
+                        ReceptionDeskEventQueue.getInstance().produceDeskEvent("Fee Payment: Rs. " + amount + " received for " + currentVerifiedMember.getFullName() + " (" + currentVerifiedMember.getGymId() + ") - " + planName);
                         loadMetrics();
                     } else {
                         setFeeStatus("Failed: " + (err != null ? err : "Could not record payment."), true);
@@ -495,30 +553,44 @@ public class ReceptionistDashboard extends BaseDashboard {
         titleBlock.add(Box.createVerticalStrut(2));
         titleBlock.add(renewalCountLabel);
 
-        // Search Bar
-        JPanel searchBlock = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        searchBlock.setOpaque(false);
+        // Search & Sorting & Export Controls
+        JPanel controlsBlock = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        controlsBlock.setOpaque(false);
+
+        // Syllabus Unit 2 (Lecture 8): Sorting with Comparator dropdown
+        String[] sortOptions = {"Sort: Latest Date", "Sort: Highest Amount", "Sort: Member Name (A-Z)"};
+        sortOrderCombo = new JComboBox<>(sortOptions);
+        styleComboBox(sortOrderCombo);
+        sortOrderCombo.setPreferredSize(new Dimension(170, 36));
+        sortOrderCombo.addActionListener(e -> applyCurrentSorting());
 
         renewalSearchField = Theme.createStyledTextField();
-        renewalSearchField.setPreferredSize(new Dimension(240, 36));
+        renewalSearchField.setPreferredSize(new Dimension(180, 36));
         renewalSearchField.setToolTipText("Filter by Gym ID, Name, or Email");
         renewalSearchField.addActionListener(e -> loadRenewalData(renewalSearchField.getText().trim()));
 
         JButton searchBtn = Theme.createSecondaryButton("Search");
         searchBtn.addActionListener(e -> loadRenewalData(renewalSearchField.getText().trim()));
 
-        JButton refreshBtn = Theme.createSecondaryButton("Refresh All");
+        JButton refreshBtn = Theme.createSecondaryButton("Refresh");
         refreshBtn.addActionListener(e -> {
             renewalSearchField.setText("");
             loadRenewalData("");
         });
 
-        searchBlock.add(renewalSearchField);
-        searchBlock.add(searchBtn);
-        searchBlock.add(refreshBtn);
+        // Syllabus Unit 6 (Lecture 25-27): Export to CSV button using File Streams
+        JButton exportCsvBtn = Theme.createSecondaryButton("Export CSV");
+        exportCsvBtn.setBackground(new Color(22, 101, 52)); // Subtle forest green
+        exportCsvBtn.addActionListener(e -> handleExportPaymentsCSV());
+
+        controlsBlock.add(sortOrderCombo);
+        controlsBlock.add(renewalSearchField);
+        controlsBlock.add(searchBtn);
+        controlsBlock.add(refreshBtn);
+        controlsBlock.add(exportCsvBtn);
 
         topBar.add(titleBlock, BorderLayout.WEST);
-        topBar.add(searchBlock, BorderLayout.EAST);
+        topBar.add(controlsBlock, BorderLayout.EAST);
         screen.add(topBar, BorderLayout.NORTH);
 
         // Table
@@ -559,31 +631,86 @@ public class ReceptionistDashboard extends BaseDashboard {
             @Override
             protected void done() {
                 try {
-                    List<FeePayment> list = get();
-                    renewalTableModel.setRowCount(0);
-                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm");
-
-                    for (FeePayment fp : list) {
-                        String dateStr = fp.getPaymentDate() != null ? sdf.format(fp.getPaymentDate()) : "N/A";
-                        renewalTableModel.addRow(new Object[]{
-                                fp.getId(),
-                                dateStr,
-                                fp.getGymId() != null ? fp.getGymId() : "N/A",
-                                fp.getMemberName(),
-                                fp.getMemberEmail(),
-                                fp.getPlanType(),
-                                String.format("Rs. %.2f", fp.getAmount()),
-                                fp.getPaymentMode(),
-                                fp.getRenewalDueDate() != null ? fp.getRenewalDueDate().toString() : "N/A"
-                        });
-                    }
-                    renewalCountLabel.setText("Showing " + list.size() + " recorded transactions");
+                    currentLoadedPayments = get();
+                    applyCurrentSorting();
                 } catch (Exception ex) {
                     renewalCountLabel.setText("Error loading renewals: " + ex.getMessage());
                 }
             }
         };
         worker.execute();
+    }
+
+    /**
+     * Demonstrates Unit 2 (Lecture 8): Applying Comparable/Comparator to collections
+     */
+    private void applyCurrentSorting() {
+        if (currentLoadedPayments == null || currentLoadedPayments.isEmpty()) {
+            renewalTableModel.setRowCount(0);
+            renewalCountLabel.setText("Showing 0 recorded transactions");
+            return;
+        }
+
+        int sortIndex = sortOrderCombo != null ? sortOrderCombo.getSelectedIndex() : 0;
+        Comparator<FeePayment> comparator;
+        switch (sortIndex) {
+            case 1:
+                comparator = FeePayment.BY_AMOUNT_DESC;
+                break;
+            case 2:
+                comparator = FeePayment.BY_MEMBER_NAME;
+                break;
+            case 0:
+            default:
+                comparator = FeePayment.BY_DATE_DESC;
+                break;
+        }
+
+        // Apply Collections sorting using Comparator (Lecture 8)
+        currentLoadedPayments.sort(comparator);
+
+        renewalTableModel.setRowCount(0);
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+
+        for (FeePayment fp : currentLoadedPayments) {
+            String dateStr = fp.getPaymentDate() != null ? sdf.format(fp.getPaymentDate()) : "N/A";
+            renewalTableModel.addRow(new Object[]{
+                    fp.getId(),
+                    dateStr,
+                    fp.getGymId() != null ? fp.getGymId() : "N/A",
+                    fp.getMemberName(),
+                    fp.getMemberEmail(),
+                    fp.getPlanType(),
+                    String.format("Rs. %.2f", fp.getAmount()),
+                    fp.getPaymentMode(),
+                    fp.getRenewalDueDate() != null ? fp.getRenewalDueDate().toString() : "N/A"
+            });
+        }
+        renewalCountLabel.setText("Showing " + currentLoadedPayments.size() + " recorded transactions");
+    }
+
+    /**
+     * Demonstrates Unit 6 (Lectures 25-27): File I/O + Collections CSV Export
+     */
+    private void handleExportPaymentsCSV() {
+        if (currentLoadedPayments == null || currentLoadedPayments.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No payment records available to export.", "Export Notice", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        JFileChooser chooser = new JFileChooser();
+        chooser.setSelectedFile(new File("gym_payments_export.csv"));
+        int userChoice = chooser.showSaveDialog(this);
+
+        if (userChoice == JFileChooser.APPROVE_OPTION) {
+            File saveFile = chooser.getSelectedFile();
+            try {
+                FileExportUtil.exportPaymentsToCSV(currentLoadedPayments, saveFile);
+                JOptionPane.showMessageDialog(this, "Successfully exported " + currentLoadedPayments.size() + " payments to:\n" + saveFile.getAbsolutePath(), "Export Success", JOptionPane.INFORMATION_MESSAGE);
+            } catch (GymException ex) {
+                JOptionPane.showMessageDialog(this, "Export Failed: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
     }
 
     // =========================================================================
@@ -647,19 +774,34 @@ public class ReceptionistDashboard extends BaseDashboard {
                 new EmptyBorder(18, 20, 18, 20)
         ));
 
-        JPanel logTopBar = new JPanel(new BorderLayout());
+        JPanel logTopBar = new JPanel(new BorderLayout(8, 0));
         logTopBar.setOpaque(false);
 
         JLabel logTitle = new JLabel("Today's Live Check-in Log");
         logTitle.setFont(Theme.FONT_HEADER);
         logTitle.setForeground(Theme.TEXT_LIGHT);
 
+        JPanel attendanceActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        attendanceActions.setOpaque(false);
+
         attendanceCountLabel = new JLabel("Loading today's check-ins...");
         attendanceCountLabel.setFont(Theme.FONT_SMALL);
         attendanceCountLabel.setForeground(Theme.TEXT_MUTED);
 
+        JButton importAttBtn = Theme.createSecondaryButton("Import CSV");
+        importAttBtn.setBackground(new Color(30, 58, 138));
+        importAttBtn.addActionListener(e -> handleImportAttendanceCSV());
+
+        JButton exportAttBtn = Theme.createSecondaryButton("Export CSV");
+        exportAttBtn.setBackground(new Color(22, 101, 52));
+        exportAttBtn.addActionListener(e -> handleExportAttendanceCSV());
+
+        attendanceActions.add(attendanceCountLabel);
+        attendanceActions.add(importAttBtn);
+        attendanceActions.add(exportAttBtn);
+
         logTopBar.add(logTitle, BorderLayout.WEST);
-        logTopBar.add(attendanceCountLabel, BorderLayout.EAST);
+        logTopBar.add(attendanceActions, BorderLayout.EAST);
         logCard.add(logTopBar, BorderLayout.NORTH);
 
         String[] cols = {"Entry ID", "Check-in Timestamp", "Gym ID", "Member Name", "Email Address", "Status"};
@@ -689,6 +831,9 @@ public class ReceptionistDashboard extends BaseDashboard {
         return screen;
     }
 
+    /**
+     * Demonstrates Unit 1 (Lecture 3): Catching custom MemberNotFoundException
+     */
     private void handleMarkAttendance() {
         String gymId = attendanceGymIdField.getText().trim();
         if (gymId.isEmpty()) {
@@ -701,16 +846,10 @@ public class ReceptionistDashboard extends BaseDashboard {
         markPresentBtn.setText("Checking in...");
 
         SwingWorker<AttendanceRecord, Void> worker = new SwingWorker<>() {
-            private String error = null;
-
             @Override
-            protected AttendanceRecord doInBackground() {
-                try {
-                    return receptionistDAO.recordAttendanceByGymId(gymId);
-                } catch (Exception ex) {
-                    error = ex.getMessage();
-                    return null;
-                }
+            protected AttendanceRecord doInBackground() throws Exception {
+                // Throws custom MemberNotFoundException if ID is invalid
+                return receptionistDAO.recordAttendanceByGymId(gymId);
             }
 
             @Override
@@ -724,14 +863,22 @@ public class ReceptionistDashboard extends BaseDashboard {
                         attendanceStatusLabel.setText("SUCCESS: " + rec.getMemberName() + " (" + rec.getGymId() + ") marked Present!");
                         attendanceStatusLabel.setForeground(Theme.SUCCESS_COLOR);
                         attendanceGymIdField.setText("");
+                        // Producer-Consumer event dispatch (Syllabus Lectures 15-16)
+                        ReceptionDeskEventQueue.getInstance().produceDeskEvent("Attendance Check-In: " + rec.getMemberName() + " (" + rec.getGymId() + ") checked in.");
                         loadAttendanceData("");
                         loadMetrics();
-                    } else {
-                        attendanceStatusLabel.setText(error != null ? error : "Could not record attendance.");
-                        attendanceStatusLabel.setForeground(Theme.ERROR_COLOR);
                     }
-                } catch (Exception ex) {
-                    attendanceStatusLabel.setText("Error: " + ex.getMessage());
+                } catch (InterruptedException e) {
+                    attendanceStatusLabel.setText("Interrupted: " + e.getMessage());
+                    attendanceStatusLabel.setForeground(Theme.ERROR_COLOR);
+                } catch (ExecutionException e) {
+                    Throwable cause = e.getCause();
+                    // Catching custom exception (Lecture 3)
+                    if (cause instanceof MemberNotFoundException) {
+                        attendanceStatusLabel.setText(cause.getMessage());
+                    } else {
+                        attendanceStatusLabel.setText("Check-in Error: " + cause.getMessage());
+                    }
                     attendanceStatusLabel.setForeground(Theme.ERROR_COLOR);
                 }
             }
@@ -749,11 +896,11 @@ public class ReceptionistDashboard extends BaseDashboard {
             @Override
             protected void done() {
                 try {
-                    List<AttendanceRecord> list = get();
+                    currentLoadedAttendance = get();
                     attendanceTableModel.setRowCount(0);
                     SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
-                    for (AttendanceRecord ar : list) {
+                    for (AttendanceRecord ar : currentLoadedAttendance) {
                         String timeStr = ar.getCheckInTime() != null ? sdf.format(ar.getCheckInTime()) : "N/A";
                         attendanceTableModel.addRow(new Object[]{
                                 ar.getId(),
@@ -764,13 +911,91 @@ public class ReceptionistDashboard extends BaseDashboard {
                                 "PRESENT"
                         });
                     }
-                    attendanceCountLabel.setText("Total Check-ins: " + list.size());
+                    attendanceCountLabel.setText("Total Check-ins: " + currentLoadedAttendance.size());
                 } catch (Exception ex) {
                     attendanceCountLabel.setText("Error loading attendance: " + ex.getMessage());
                 }
             }
         };
         worker.execute();
+    }
+
+    /**
+     * Demonstrates Unit 6 (Lectures 25-27): Export Attendance Records to CSV
+     */
+    private void handleExportAttendanceCSV() {
+        if (currentLoadedAttendance == null || currentLoadedAttendance.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No attendance records available to export.", "Export Notice", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        JFileChooser chooser = new JFileChooser();
+        chooser.setSelectedFile(new File("gym_attendance_export.csv"));
+        int userChoice = chooser.showSaveDialog(this);
+
+        if (userChoice == JFileChooser.APPROVE_OPTION) {
+            File saveFile = chooser.getSelectedFile();
+            try {
+                FileExportUtil.exportAttendanceToCSV(currentLoadedAttendance, saveFile);
+                JOptionPane.showMessageDialog(this, "Successfully exported " + currentLoadedAttendance.size() + " attendance logs to:\n" + saveFile.getAbsolutePath(), "Export Success", JOptionPane.INFORMATION_MESSAGE);
+            } catch (GymException ex) {
+                JOptionPane.showMessageDialog(this, "Export Failed: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    /**
+     * Demonstrates Unit 6 (Lectures 25-27): Import and validate records from CSV using Character Stream (BufferedReader/FileReader)
+     */
+    private void handleImportAttendanceCSV() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Select Attendance CSV File to Import");
+        int userChoice = chooser.showOpenDialog(this);
+
+        if (userChoice == JFileChooser.APPROVE_OPTION) {
+            File sourceFile = chooser.getSelectedFile();
+            try {
+                List<AttendanceRecord> importedRecords = FileExportUtil.importAttendanceFromCSV(sourceFile);
+                if (importedRecords.isEmpty()) {
+                    JOptionPane.showMessageDialog(this, "The selected file contained no valid attendance rows.", "Import Warning", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                for (AttendanceRecord ar : importedRecords) {
+                    String timeStr = ar.getCheckInTime() != null ? sdf.format(ar.getCheckInTime()) : "N/A";
+                    attendanceTableModel.addRow(new Object[]{
+                            ar.getId(),
+                            timeStr,
+                            ar.getGymId(),
+                            ar.getMemberName(),
+                            ar.getMemberEmail(),
+                            "IMPORTED"
+                    });
+                }
+                attendanceCountLabel.setText("Total Check-ins (incl. imported): " + attendanceTableModel.getRowCount());
+                ReceptionDeskEventQueue.getInstance().produceDeskEvent("CSV Import: " + importedRecords.size() + " records imported from " + sourceFile.getName());
+                JOptionPane.showMessageDialog(this, "Successfully parsed and loaded " + importedRecords.size() + " records from:\n" + sourceFile.getAbsolutePath(), "Import Success", JOptionPane.INFORMATION_MESSAGE);
+            } catch (GymException ex) {
+                JOptionPane.showMessageDialog(this, "Failed to import CSV: " + ex.getMessage(), "Import Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    /**
+     * Syllabus Unit 1 (Lecture 2): Multi-Dimensional Array (2D Array Object[][]) Handling
+     * Extracts table model rows and columns into a 2D matrix for reporting or printing.
+     */
+    public Object[][] getAttendanceTableDataMatrix() {
+        int rows = attendanceTableModel.getRowCount();
+        int cols = attendanceTableModel.getColumnCount();
+        Object[][] matrix = new Object[rows][cols];
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                matrix[r][c] = attendanceTableModel.getValueAt(r, c);
+            }
+        }
+        return matrix;
     }
 
     // =========================================================================

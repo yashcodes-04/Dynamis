@@ -1,12 +1,14 @@
 /**
  * Date: 2026-11-18 - Yash
+ * Syllabus: Unit 2 (Lecture 8) - Comparable & Comparator implementations
  */
 package com.gym.model;
 
 import java.sql.Date;
 import java.sql.Timestamp;
+import java.util.Comparator;
 
-public class FeePayment {
+public class FeePayment implements Comparable<FeePayment> {
     private int id;
     private String gymId;
     private String memberEmail;
@@ -16,6 +18,14 @@ public class FeePayment {
     private String paymentMode;
     private Timestamp paymentDate;
     private Date renewalDueDate;
+
+    // Comparators for custom sorting (Lecture 8)
+    public static final Comparator<FeePayment> BY_AMOUNT_DESC = (p1, p2) -> Double.compare(p2.getAmount(), p1.getAmount());
+    public static final Comparator<FeePayment> BY_MEMBER_NAME = (p1, p2) -> p1.getMemberName().compareToIgnoreCase(p2.getMemberName());
+    public static final Comparator<FeePayment> BY_DATE_DESC = (p1, p2) -> {
+        if (p1.getPaymentDate() == null || p2.getPaymentDate() == null) return 0;
+        return p2.getPaymentDate().compareTo(p1.getPaymentDate());
+    };
 
     public FeePayment() {}
 
@@ -30,6 +40,17 @@ public class FeePayment {
         this.paymentMode = paymentMode;
         this.paymentDate = paymentDate;
         this.renewalDueDate = renewalDueDate;
+    }
+
+    /**
+     * Natural sorting order: Latest payment date first (Comparable interface)
+     */
+    @Override
+    public int compareTo(FeePayment other) {
+        if (this.paymentDate == null || other.paymentDate == null) {
+            return Integer.compare(other.id, this.id);
+        }
+        return other.paymentDate.compareTo(this.paymentDate);
     }
 
     public int getId() {
