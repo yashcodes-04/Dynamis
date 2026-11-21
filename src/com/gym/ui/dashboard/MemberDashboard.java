@@ -34,6 +34,8 @@ public class MemberDashboard extends BaseDashboard {
     private JLabel membershipStatusSub;
     private JLabel membershipDaysVal;
     private JLabel membershipDaysSub;
+    private JLabel attendanceVal;
+    private JLabel attendanceSub;
     private JLabel nextClassVal;
     private JLabel nextClassSub;
 
@@ -73,7 +75,10 @@ public class MemberDashboard extends BaseDashboard {
         membershipDaysSub = new JLabel("Valid until --");
         metricsPanel.add(createMetricCard("MEMBERSHIP DAYS LEFT", "30 Days Left", "Valid until --", Theme.ROLE_OWNER_COLOR, membershipDaysVal, membershipDaysSub));
 
-        metricsPanel.add(createMetricCard("WORKOUT ATTENDANCE", "18 Days", "This month (Top 10%)", Theme.SUCCESS_COLOR));
+        attendanceVal = new JLabel("0 Days");
+        attendanceSub = new JLabel("Verified Check-ins");
+        metricsPanel.add(createMetricCard("WORKOUT ATTENDANCE", "0 Days", "Verified Check-ins", Theme.SUCCESS_COLOR, attendanceVal, attendanceSub));
+
         metricsPanel.add(createMetricCard("ASSIGNED TRAINER", "Alex Rivera", "Personal Training - Tier 1", Theme.ROLE_TRAINER_COLOR));
 
         nextClassVal = new JLabel("No Bookings");
@@ -216,6 +221,11 @@ public class MemberDashboard extends BaseDashboard {
 
         bookedTable = new JTable(bookedTableModel);
         styleTable(bookedTable);
+
+        // Dynamically enable/disable Cancel button based on row selection
+        bookedTable.getSelectionModel().addListSelectionListener(e -> {
+            cancelBookingBtn.setEnabled(bookedTable.getSelectedRow() >= 0);
+        });
 
         // Custom highlight for Status column
         bookedTable.getColumnModel().getColumn(4).setCellRenderer(new DefaultTableCellRenderer() {
@@ -374,7 +384,7 @@ public class MemberDashboard extends BaseDashboard {
 
             bookedCardLayout.show(bookedCardContainer, "TABLE");
             bookedBadge.setText(currentBookings.size() + (currentBookings.size() == 1 ? " Session Booked" : " Sessions Booked"));
-            cancelBookingBtn.setEnabled(true);
+            cancelBookingBtn.setEnabled(bookedTable.getSelectedRow() >= 0);
 
             // Update Next Class Metric Card with the first upcoming booked class
             BookedSession next = currentBookings.get(0);
@@ -466,17 +476,19 @@ public class MemberDashboard extends BaseDashboard {
         }
 
         // Case 2: Active plan with days left > 0
+        String formattedDate = dueDate != null ? dueDate.format(fmt) : "--";
+
         if (membershipStatusVal != null) {
             membershipStatusVal.setText("ACTIVE");
+            membershipStatusVal.setForeground(Theme.SUCCESS_COLOR);
         }
         if (membershipStatusSub != null) {
             membershipStatusSub.setText(plan + " • " + daysLeft + "d left");
+            membershipStatusSub.setForeground(Theme.ROLE_MEMBER_COLOR);
         }
-
-        String formattedDate = dueDate.format(fmt);
-
         if (membershipDaysVal != null) {
             membershipDaysVal.setText(daysLeft + (daysLeft == 1 ? " Day Left" : " Days Left"));
+            membershipDaysVal.setForeground(Theme.TEXT_LIGHT);
         }
         if (membershipDaysSub != null) {
             if (daysLeft <= 5) {
@@ -487,7 +499,6 @@ public class MemberDashboard extends BaseDashboard {
                 membershipDaysSub.setForeground(Theme.ROLE_OWNER_COLOR);
             }
         }
-
         if (summaryMembershipExpiry != null) {
             summaryMembershipExpiry.setText("• Membership Plan: " + plan + " (" + daysLeft + " Days Left till " + formattedDate + ")");
             summaryMembershipExpiry.setForeground(Theme.ROLE_OWNER_COLOR);
@@ -497,12 +508,63 @@ public class MemberDashboard extends BaseDashboard {
     @Override
     public void refreshUserInfo() {
         super.refreshUserInfo();
+        loadMemberData();
+    }
+
+    /**
+     * Loads live fee status and real verified attendance count asynchronously
+     */
+    public void loadMemberData() {
         User user = UserSession.getCurrentUser();
-        if (user != null) {
-            UserDAO dao = new UserDAO();
-            dao.syncUserMembership(user);
+        if (user == null) {
+            updateMembershipDisplay();
+            loadBookedSessions();
+            return;
         }
-        updateMembershipDisplay();
-        loadBookedSessions();
+
+        // Sync membership from database
+        UserDAO userDAO = new UserDAO();
+        userDAO.syncUserMembership(user);
+
+        SwingWorker<Void, Void> worker = new SwingWorker<>() {
+            private FeePayment latestPayment = null;
+            private int attendanceCount = 0;
+
+            @Override
+            protected Void doInBackground() {
+                try {
+                    ReceptionistDAO dao = new ReceptionistDAO();
+                    latestPayment = dao.getLatestFeePayment(user.getGymId(), user.getEmail());
+                    attendanceCount = dao.getMemberAttendanceCount(user.getGymId(), user.getEmail());
+                } catch (Exception ex) {
+                    System.err.println("Note loading member details: " + ex.getMessage());
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                if (latestPayment != null && latestPayment.getRenewalDueDate() != null && UserSession.getMembershipPlan() == null) {
+                    UserSession.setMembership(latestPayment.getPlanType(), latestPayment.getAmount(), latestPayment.getRenewalDueDate().toLocalDate());
+                }
+
+                if (attendanceVal != null) {
+                    attendanceVal.setText(attendanceCount + (attendanceCount == 1 ? " Day" : " Days"));
+                }
+                if (attendanceSub != null) {
+                    if (attendanceCount == 0) {
+                        attendanceSub.setText("No check-ins yet");
+                        attendanceSub.setForeground(Theme.TEXT_MUTED);
+                    } else {
+                        attendanceSub.setText("Verified Gym Check-ins");
+                        attendanceSub.setForeground(Theme.SUCCESS_COLOR);
+                    }
+                }
+
+                updateMembershipDisplay();
+                loadBookedSessions();
+            }
+        };
+        worker.execute();
     }
 }
