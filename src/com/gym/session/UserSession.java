@@ -6,8 +6,13 @@ package com.gym.session;
 import com.gym.model.Role;
 import com.gym.model.User;
 
+import java.time.LocalDate;
+
 public class UserSession {
     private static User currentUser;
+    private static String membershipPlan;
+    private static Double membershipPrice;
+    private static LocalDate renewalDueDate;
 
     public static void setCurrentUser(User user) {
         currentUser = user;
@@ -25,7 +30,32 @@ public class UserSession {
         return currentUser != null ? currentUser.getRole() : null;
     }
 
+    public static void setMembership(String plan, double price, int months) {
+        membershipPlan = plan;
+        membershipPrice = price;
+        renewalDueDate = LocalDate.now().plusMonths(months);
+    }
+
+    public static String getMembershipPlan() {
+        return membershipPlan;
+    }
+
+    public static Double getMembershipPrice() {
+        return membershipPrice;
+    }
+
+    public static LocalDate getRenewalDueDate() {
+        return renewalDueDate;
+    }
+
+    public static boolean hasActiveMembership() {
+        return membershipPlan != null;
+    }
+
     public static void logout() {
         currentUser = null;
+        membershipPlan = null;
+        membershipPrice = null;
+        renewalDueDate = null;
     }
 }

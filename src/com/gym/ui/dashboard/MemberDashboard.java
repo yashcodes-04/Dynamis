@@ -4,6 +4,7 @@
 package com.gym.ui.dashboard;
 
 import com.gym.model.Role;
+import com.gym.session.UserSession;
 import com.gym.ui.MainFrame;
 import com.gym.ui.Theme;
 
@@ -14,6 +15,9 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 
 public class MemberDashboard extends BaseDashboard {
+
+    private JLabel membershipStatusVal;
+    private JLabel membershipStatusSub;
 
     public MemberDashboard(MainFrame mainFrame) {
         super(mainFrame, "Member Workspace", Role.MEMBER);
@@ -26,7 +30,10 @@ public class MemberDashboard extends BaseDashboard {
         // Top Metrics
         JPanel metricsPanel = new JPanel(new GridLayout(1, 4, 15, 0));
         metricsPanel.setOpaque(false);
-        metricsPanel.add(createMetricCard("MEMBERSHIP STATUS", "ACTIVE", "Renews in 42 days", Theme.ROLE_MEMBER_COLOR));
+
+        membershipStatusVal = new JLabel("ACTIVE");
+        membershipStatusSub = new JLabel("Renews in 30 days");
+        metricsPanel.add(createMetricCard("MEMBERSHIP STATUS", "ACTIVE", "Renews in 30 days", Theme.ROLE_MEMBER_COLOR, membershipStatusVal, membershipStatusSub));
         metricsPanel.add(createMetricCard("WORKOUT ATTENDANCE", "18 Days", "This month (Top 10%)", Theme.SUCCESS_COLOR));
         metricsPanel.add(createMetricCard("ASSIGNED TRAINER", "Alex Rivera", "Personal Training - Tier 1", Theme.ROLE_TRAINER_COLOR));
         metricsPanel.add(createMetricCard("NEXT CLASS", "HIIT Cardio", "Today at 06:30 PM", Theme.ACCENT_PRIMARY));
@@ -84,7 +91,7 @@ public class MemberDashboard extends BaseDashboard {
 
         JButton renewBtn = Theme.createSecondaryButton("Renew / Upgrade Membership");
         renewBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
-        renewBtn.addActionListener(e -> JOptionPane.showMessageDialog(this, "Redirecting to membership plans..."));
+        renewBtn.addActionListener(e -> mainFrame.showChooseMembership());
 
         JButton contactTrainerBtn = Theme.createSecondaryButton("Message Assigned Trainer");
         contactTrainerBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
@@ -102,5 +109,27 @@ public class MemberDashboard extends BaseDashboard {
         centerPanel.add(actionCard);
 
         contentPanel.add(centerPanel, BorderLayout.CENTER);
+    }
+
+    public void updateMembership(String planName, double price, int months) {
+        if (membershipStatusVal != null) {
+            membershipStatusVal.setText("ACTIVE");
+        }
+        if (membershipStatusSub != null) {
+            membershipStatusSub.setText(planName + " (" + (months * 30) + " Days)");
+        }
+    }
+
+    @Override
+    public void refreshUserInfo() {
+        super.refreshUserInfo();
+        if (UserSession.getMembershipPlan() != null) {
+            if (membershipStatusVal != null) {
+                membershipStatusVal.setText("ACTIVE");
+            }
+            if (membershipStatusSub != null) {
+                membershipStatusSub.setText(UserSession.getMembershipPlan() + " • Rs. " + String.format("%,.0f", UserSession.getMembershipPrice()));
+            }
+        }
     }
 }

@@ -16,6 +16,7 @@ public class MainFrame extends JFrame {
 
     public static final String CARD_LOGIN = "LOGIN";
     public static final String CARD_REGISTER = "REGISTER";
+    public static final String CARD_CHOOSE_MEMBERSHIP = "CHOOSE_MEMBERSHIP";
     public static final String CARD_MEMBER = "MEMBER";
     public static final String CARD_RECEPTIONIST = "RECEPTIONIST";
     public static final String CARD_TRAINER = "TRAINER";
@@ -26,6 +27,7 @@ public class MainFrame extends JFrame {
 
     private LoginPanel loginPanel;
     private RegisterPanel registerPanel;
+    private ChooseMembershipPanel chooseMembershipPanel;
     private MemberDashboard memberDashboard;
     private ReceptionistDashboard receptionistDashboard;
     private TrainerDashboard trainerDashboard;
@@ -44,6 +46,7 @@ public class MainFrame extends JFrame {
     private void initViews() {
         loginPanel = new LoginPanel(this);
         registerPanel = new RegisterPanel(this);
+        chooseMembershipPanel = new ChooseMembershipPanel(this);
         memberDashboard = new MemberDashboard(this);
         receptionistDashboard = new ReceptionistDashboard(this);
         trainerDashboard = new TrainerDashboard(this);
@@ -51,6 +54,7 @@ public class MainFrame extends JFrame {
 
         cardsPanel.add(loginPanel, CARD_LOGIN);
         cardsPanel.add(registerPanel, CARD_REGISTER);
+        cardsPanel.add(chooseMembershipPanel, CARD_CHOOSE_MEMBERSHIP);
         cardsPanel.add(memberDashboard, CARD_MEMBER);
         cardsPanel.add(receptionistDashboard, CARD_RECEPTIONIST);
         cardsPanel.add(trainerDashboard, CARD_TRAINER);
@@ -70,8 +74,9 @@ public class MainFrame extends JFrame {
         if (role == null) return;
         switch (role) {
             case MEMBER:
-                memberDashboard.refreshUserInfo();
-                showCard(CARD_MEMBER);
+                // Do not open members page instantly; show the choose membership box first
+                chooseMembershipPanel.resetSelection();
+                showCard(CARD_CHOOSE_MEMBERSHIP);
                 break;
             case RECEPTIONIST:
                 receptionistDashboard.refreshUserInfo();
@@ -88,11 +93,26 @@ public class MainFrame extends JFrame {
         }
     }
 
+    public void showChooseMembership() {
+        chooseMembershipPanel.resetSelection();
+        showCard(CARD_CHOOSE_MEMBERSHIP);
+    }
+
+    public void openMemberDashboard(String planName, double price, int months) {
+        memberDashboard.refreshUserInfo();
+        memberDashboard.updateMembership(planName, price, months);
+        showCard(CARD_MEMBER);
+    }
+
     public LoginPanel getLoginPanel() {
         return loginPanel;
     }
 
     public RegisterPanel getRegisterPanel() {
         return registerPanel;
+    }
+
+    public ChooseMembershipPanel getChooseMembershipPanel() {
+        return chooseMembershipPanel;
     }
 }

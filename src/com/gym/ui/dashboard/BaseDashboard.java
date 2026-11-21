@@ -128,6 +128,12 @@ public abstract class BaseDashboard extends JPanel {
     }
 
     protected JPanel createMetricCard(String title, String value, String subtitle, Color accentColor) {
+        JLabel valLbl = new JLabel(value);
+        JLabel subLbl = new JLabel(subtitle);
+        return createMetricCard(title, value, subtitle, accentColor, valLbl, subLbl);
+    }
+
+    protected JPanel createMetricCard(String title, String value, String subtitle, Color accentColor, JLabel valueLabel, JLabel subtitleLabel) {
         JPanel card = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -150,19 +156,19 @@ public abstract class BaseDashboard extends JPanel {
         titleLbl.setFont(Theme.FONT_SMALL);
         titleLbl.setForeground(Theme.TEXT_MUTED);
 
-        JLabel valLbl = new JLabel(value);
-        valLbl.setFont(new Font("Segoe UI", Font.BOLD, 22));
-        valLbl.setForeground(Theme.TEXT_LIGHT);
+        valueLabel.setText(value);
+        valueLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        valueLabel.setForeground(Theme.TEXT_LIGHT);
 
-        JLabel subLbl = new JLabel(subtitle);
-        subLbl.setFont(Theme.FONT_SMALL);
-        subLbl.setForeground(accentColor);
+        subtitleLabel.setText(subtitle);
+        subtitleLabel.setFont(Theme.FONT_SMALL);
+        subtitleLabel.setForeground(accentColor);
 
         card.add(titleLbl);
         card.add(Box.createVerticalStrut(4));
-        card.add(valLbl);
+        card.add(valueLabel);
         card.add(Box.createVerticalStrut(4));
-        card.add(subLbl);
+        card.add(subtitleLabel);
 
         return card;
     }
