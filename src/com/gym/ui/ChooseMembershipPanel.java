@@ -283,7 +283,7 @@ public class ChooseMembershipPanel extends JPanel {
     private void handleConfirm() {
         // Validation: without selecting the membership the user cannot open the member's dashboard
         if (selectedPlan == null) {
-            messageLabel.setText("⚠️ You cannot open Member Dashboard without choosing a membership plan!");
+            messageLabel.setText("[!] You cannot open Member Dashboard without choosing a membership plan!");
             messageLabel.setForeground(Theme.ERROR_COLOR);
             ThemedDialog.showWarning(
                     this,

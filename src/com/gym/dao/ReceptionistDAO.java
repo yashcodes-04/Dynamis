@@ -283,6 +283,26 @@ public class ReceptionistDAO implements GenericDAO<FeePayment, Integer> {
     }
 
     /**
+     * Retrieves total check-in count for a specific member by Gym ID or email.
+     */
+    public int getMemberAttendanceCount(String gymId, String email) {
+        String sql = "SELECT COUNT(*) FROM attendance WHERE (LOWER(gym_id) = ? AND gym_id != '') OR LOWER(member_email) = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, gymId != null ? gymId.trim().toLowerCase() : "");
+            ps.setString(2, email != null ? email.trim().toLowerCase() : "");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        } catch (Exception ex) {
+            System.err.println("Note counting member attendance: " + ex.getMessage());
+        }
+        return 0;
+    }
+
+    /**
      * Demonstrates Stream API mapToDouble() and method reference (Lecture 21-23)
      */
     public double getTotalRevenue() throws SQLException {
