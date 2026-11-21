@@ -113,7 +113,13 @@ public class MemberDashboard extends BaseDashboard {
                 {"Friday", "High Intensity Circuit", "Self Directed", "06:30 PM"},
                 {"Saturday", "Cardio & Stretching", "Elena Gomez", "09:00 AM"}
         };
-        JTable table = new JTable(new DefaultTableModel(data, cols));
+        DefaultTableModel scheduleModel = new DefaultTableModel(data, cols) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        JTable table = new JTable(scheduleModel);
         styleTable(table);
         JScrollPane scrollPane = Theme.createModernScrollPane(table);
         scrollPane.setBorder(BorderFactory.createEmptyBorder(12, 0, 0, 0));

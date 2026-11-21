@@ -315,9 +315,10 @@ public class ChooseMembershipPanel extends JPanel {
                 @Override
                 protected Void doInBackground() {
                     try {
-                        // 1. Update users table with membership plan, start date, end date, duration days
+                        // 1. Update users table with membership plan, start date, end date, duration days (updates existing row in place)
                         UserDAO userDAO = new UserDAO();
                         userDAO.updateMemberMembership(
+                                currentUser.getGymId(),
                                 currentUser.getEmail(),
                                 plan.getTitle(),
                                 plan.getPrice(),
@@ -326,7 +327,7 @@ public class ChooseMembershipPanel extends JPanel {
                                 endDate
                         );
 
-                        // 2. Record fee payment in fee_payments table
+                        // 2. Update fee payment in fee_payments table (updates existing record in place, no duplicate row)
                         ReceptionistDAO dao = new ReceptionistDAO();
                         dao.recordFeePayment(
                                 currentUser.getGymId(),
@@ -335,7 +336,8 @@ public class ChooseMembershipPanel extends JPanel {
                                 plan.getTitle(),
                                 plan.getPrice(),
                                 "Self-Checkout",
-                                plan.getMonths()
+                                endDate,
+                                plan.getDurationDays()
                         );
                     } catch (Exception ex) {
                         System.err.println("Note on recording self membership fee in DB: " + ex.getMessage());

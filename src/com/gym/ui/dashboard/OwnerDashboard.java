@@ -58,7 +58,13 @@ public class OwnerDashboard extends BaseDashboard {
                 {"Lucas Vance", "Front Desk Associate", "Front Desk 2", "Break"},
                 {"Chris Thorne", "Strength Coach", "CrossFit Area", "Scheduled 6 PM"}
         };
-        JTable table = new JTable(new DefaultTableModel(data, cols));
+        DefaultTableModel staffModel = new DefaultTableModel(data, cols) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        JTable table = new JTable(staffModel);
         styleTable(table);
         JScrollPane scrollPane = Theme.createModernScrollPane(table);
         scrollPane.setBorder(BorderFactory.createEmptyBorder(12, 0, 0, 0));

@@ -58,7 +58,13 @@ public class TrainerDashboard extends BaseDashboard {
                 {"Jessica Alba", "Core & Mobility", "Week 1 / 4", "Wed 05:00 PM"},
                 {"Ken Adams", "Cardiovascular Health", "Week 6 / 12", "Thu 07:00 AM"}
         };
-        JTable table = new JTable(new DefaultTableModel(data, cols));
+        DefaultTableModel clientModel = new DefaultTableModel(data, cols) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        JTable table = new JTable(clientModel);
         styleTable(table);
         JScrollPane scrollPane = Theme.createModernScrollPane(table);
         scrollPane.setBorder(BorderFactory.createEmptyBorder(12, 0, 0, 0));

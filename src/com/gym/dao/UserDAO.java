@@ -195,10 +195,13 @@ public class UserDAO {
 
     /**
      * Updates the membership plan, start date, and end date in the MySQL database.
+     * Updates the existing user credentials/record in place without creating a new row.
      */
-    public boolean updateMemberMembership(String emailOrGymId, String plan, double price, int durationDays, LocalDate startDate, LocalDate endDate) {
+    public boolean updateMemberMembership(String gymId, String email, String plan, double price, int durationDays, LocalDate startDate, LocalDate endDate) {
+        String cleanGymId = gymId != null ? gymId.trim().toLowerCase() : "";
+        String cleanEmail = email != null ? email.trim().toLowerCase() : "";
         String sql = "UPDATE users SET membership_plan = ?, membership_price = ?, membership_duration_days = ?, membership_start_date = ?, membership_end_date = ? "
-                   + "WHERE LOWER(email) = ? OR LOWER(gym_id) = ?";
+                   + "WHERE (LOWER(gym_id) = ? AND gym_id != '') OR LOWER(email) = ?";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, plan);
@@ -206,13 +209,17 @@ public class UserDAO {
             ps.setInt(3, durationDays);
             ps.setDate(4, Date.valueOf(startDate));
             ps.setDate(5, Date.valueOf(endDate));
-            ps.setString(6, emailOrGymId.trim().toLowerCase());
-            ps.setString(7, emailOrGymId.trim().toLowerCase());
+            ps.setString(6, cleanGymId);
+            ps.setString(7, cleanEmail);
 
             return ps.executeUpdate() > 0;
         } catch (Exception ex) {
             System.err.println("Error updating user membership in DB: " + ex.getMessage());
             return false;
         }
+    }
+
+    public boolean updateMemberMembership(String emailOrGymId, String plan, double price, int durationDays, LocalDate startDate, LocalDate endDate) {
+        return updateMemberMembership(emailOrGymId, emailOrGymId, plan, price, durationDays, startDate, endDate);
     }
 }
