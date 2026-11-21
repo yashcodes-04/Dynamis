@@ -4,6 +4,7 @@
 package com.gym.ui;
 
 import com.gym.dao.ReceptionistDAO;
+import com.gym.dao.UserDAO;
 import com.gym.model.User;
 import com.gym.session.UserSession;
 
@@ -12,6 +13,8 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,17 +25,19 @@ public class ChooseMembershipPanel extends JPanel {
         private final String title;
         private final String durationLabel;
         private final int months;
+        private final int durationDays;
         private final double price;
         private final String badge;
         private final Color badgeColor;
         private final String[] perks;
 
-        public PlanOption(String id, String title, String durationLabel, int months, double price,
+        public PlanOption(String id, String title, String durationLabel, int months, int durationDays, double price,
                           String badge, Color badgeColor, String[] perks) {
             this.id = id;
             this.title = title;
             this.durationLabel = durationLabel;
             this.months = months;
+            this.durationDays = durationDays;
             this.price = price;
             this.badge = badge;
             this.badgeColor = badgeColor;
@@ -43,6 +48,7 @@ public class ChooseMembershipPanel extends JPanel {
         public String getTitle() { return title; }
         public String getDurationLabel() { return durationLabel; }
         public int getMonths() { return months; }
+        public int getDurationDays() { return durationDays; }
         public double getPrice() { return price; }
         public String getBadge() { return badge; }
         public Color getBadgeColor() { return badgeColor; }
@@ -71,8 +77,9 @@ public class ChooseMembershipPanel extends JPanel {
         plans.add(new PlanOption(
                 "MONTHLY",
                 "Monthly Pass",
-                "1 Month",
+                "1 Month (30 Days)",
                 1,
+                30,
                 1500.0,
                 "STARTER",
                 Theme.ROLE_MEMBER_COLOR,
@@ -87,8 +94,9 @@ public class ChooseMembershipPanel extends JPanel {
         plans.add(new PlanOption(
                 "QUARTERLY",
                 "Quarterly Pass",
-                "3 Months",
+                "3 Months (90 Days)",
                 3,
+                90,
                 4000.0,
                 "POPULAR",
                 Theme.SUCCESS_COLOR,
@@ -96,15 +104,16 @@ public class ChooseMembershipPanel extends JPanel {
                         "All Monthly Features",
                         "1 Fitness Assessment",
                         "Locker Room & Steam Bath",
-                        "Save 11% vs Monthly"
+                        "Valid for 90 Days (Save 11%)"
                 }
         ));
 
         plans.add(new PlanOption(
                 "HALF_YEARLY",
                 "Half-Yearly Pass",
-                "6 Months",
+                "6 Months (180 Days)",
                 6,
+                180,
                 7500.0,
                 "RECOMMENDED",
                 Theme.ROLE_TRAINER_COLOR,
@@ -112,15 +121,16 @@ public class ChooseMembershipPanel extends JPanel {
                         "All Quarterly Features",
                         "Custom Diet & Nutrition Plan",
                         "2 Complimentary Guest Passes",
-                        "Save 17% vs Monthly"
+                        "Valid for 180 Days (Save 17%)"
                 }
         ));
 
         plans.add(new PlanOption(
                 "ANNUAL",
                 "Annual Pass",
-                "12 Months",
+                "12 Months (365 Days)",
                 12,
+                365,
                 13500.0,
                 "VIP BEST VALUE",
                 Theme.ROLE_OWNER_COLOR,
@@ -263,6 +273,13 @@ public class ChooseMembershipPanel extends JPanel {
         }
     }
 
+    public void setExpiredNotice(String oldPlan, LocalDate expiredDate) {
+        resetSelection();
+        String dateStr = expiredDate != null ? expiredDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy")) : "recently";
+        messageLabel.setText("⚠️ Your " + (oldPlan != null ? oldPlan : "") + " membership expired on " + dateStr + " (0 Days Left). Please choose a plan below to renew access.");
+        messageLabel.setForeground(Theme.ERROR_COLOR);
+    }
+
     private void handleConfirm() {
         // Validation: without selecting the membership the user cannot open the member's dashboard
         if (selectedPlan == null) {
@@ -276,17 +293,40 @@ public class ChooseMembershipPanel extends JPanel {
             return;
         }
 
-        // Store active membership in session
-        UserSession.setMembership(selectedPlan.getTitle(), selectedPlan.getPrice(), selectedPlan.getMonths());
+        LocalDate startDate = LocalDate.now();
+        LocalDate endDate = startDate.plusDays(selectedPlan.getDurationDays());
 
-        // Asynchronously record fee payment in database if user is logged in
         User currentUser = UserSession.getCurrentUser();
+        if (currentUser != null) {
+            currentUser.setMembershipPlan(selectedPlan.getTitle());
+            currentUser.setMembershipPrice(selectedPlan.getPrice());
+            currentUser.setMembershipDurationDays(selectedPlan.getDurationDays());
+            currentUser.setMembershipStartDate(startDate);
+            currentUser.setMembershipEndDate(endDate);
+        }
+
+        // Store active membership in session
+        UserSession.setMembership(selectedPlan.getTitle(), selectedPlan.getPrice(), selectedPlan.getDurationDays(), startDate, endDate);
+
+        // Asynchronously record membership and fee payment in database
         if (currentUser != null) {
             final PlanOption plan = selectedPlan;
             SwingWorker<Void, Void> worker = new SwingWorker<>() {
                 @Override
                 protected Void doInBackground() {
                     try {
+                        // 1. Update users table with membership plan, start date, end date, duration days
+                        UserDAO userDAO = new UserDAO();
+                        userDAO.updateMemberMembership(
+                                currentUser.getEmail(),
+                                plan.getTitle(),
+                                plan.getPrice(),
+                                plan.getDurationDays(),
+                                startDate,
+                                endDate
+                        );
+
+                        // 2. Record fee payment in fee_payments table
                         ReceptionistDAO dao = new ReceptionistDAO();
                         dao.recordFeePayment(
                                 currentUser.getGymId(),
@@ -298,7 +338,7 @@ public class ChooseMembershipPanel extends JPanel {
                                 plan.getMonths()
                         );
                     } catch (Exception ex) {
-                        System.err.println("Note on recording self membership fee: " + ex.getMessage());
+                        System.err.println("Note on recording self membership fee in DB: " + ex.getMessage());
                     }
                     return null;
                 }
@@ -307,7 +347,7 @@ public class ChooseMembershipPanel extends JPanel {
         }
 
         // Transition to Member Workspace
-        mainFrame.openMemberDashboard(selectedPlan.getTitle(), selectedPlan.getPrice(), selectedPlan.getMonths());
+        mainFrame.openMemberDashboard(selectedPlan.getTitle(), selectedPlan.getPrice(), selectedPlan.getDurationDays());
     }
 
     /**

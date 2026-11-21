@@ -3,7 +3,10 @@
  */
 package com.gym.ui;
 
+import com.gym.dao.UserDAO;
 import com.gym.model.Role;
+import com.gym.model.User;
+import com.gym.session.UserSession;
 import com.gym.ui.dashboard.MemberDashboard;
 import com.gym.ui.dashboard.OwnerDashboard;
 import com.gym.ui.dashboard.ReceptionistDashboard;
@@ -74,9 +77,7 @@ public class MainFrame extends JFrame {
         if (role == null) return;
         switch (role) {
             case MEMBER:
-                // Do not open members page instantly; show the choose membership box first
-                chooseMembershipPanel.resetSelection();
-                showCard(CARD_CHOOSE_MEMBERSHIP);
+                handleMemberDashboardAccess();
                 break;
             case RECEPTIONIST:
                 receptionistDashboard.refreshUserInfo();
@@ -93,14 +94,50 @@ public class MainFrame extends JFrame {
         }
     }
 
+    /**
+     * Checks the user's membership conditions before opening Member Dashboard:
+     * 1. If membership plan is already in DB and days are left (> 0): directly open dashboard.
+     * 2. If membership days are over and have become zero (daysLeft <= 0): block entry until renewed.
+     * 3. If membership plan is null: block entry until user chooses a plan.
+     */
+    public void handleMemberDashboardAccess() {
+        User user = UserSession.getCurrentUser();
+        if (user == null) {
+            showCard(CARD_LOGIN);
+            return;
+        }
+
+        // Synchronize latest membership plan, start date, and end date from the database
+        UserDAO userDAO = new UserDAO();
+        userDAO.syncUserMembership(user);
+
+        String plan = UserSession.getMembershipPlan();
+        long daysLeft = UserSession.getDaysLeft();
+
+        // Condition 1: Plan exists in database AND days left > 0 -> directly open dashboard
+        if (plan != null && !plan.trim().isEmpty() && daysLeft > 0) {
+            memberDashboard.refreshUserInfo();
+            showCard(CARD_MEMBER);
+        }
+        // Condition 2: Days are over (0 days left) -> block entry and show renewal prompt
+        else if (plan != null && !plan.trim().isEmpty() && daysLeft <= 0) {
+            chooseMembershipPanel.setExpiredNotice(plan, UserSession.getRenewalDueDate());
+            showCard(CARD_CHOOSE_MEMBERSHIP);
+        }
+        // Condition 3: Membership plan is null -> block entry and show choose membership
+        else {
+            chooseMembershipPanel.resetSelection();
+            showCard(CARD_CHOOSE_MEMBERSHIP);
+        }
+    }
+
     public void showChooseMembership() {
         chooseMembershipPanel.resetSelection();
         showCard(CARD_CHOOSE_MEMBERSHIP);
     }
 
-    public void openMemberDashboard(String planName, double price, int months) {
+    public void openMemberDashboard(String planName, double price, int durationDays) {
         memberDashboard.refreshUserInfo();
-        memberDashboard.updateMembership(planName, price, months);
         showCard(CARD_MEMBER);
     }
 

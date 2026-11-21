@@ -188,6 +188,22 @@ public class DBConnection {
                 System.err.println("Note on users gym_id migration: " + ex.getMessage());
             }
 
+            // Add membership columns to users if not present
+            try {
+                java.sql.DatabaseMetaData meta = conn.getMetaData();
+                try (ResultSet rs = meta.getColumns(null, null, "users", "membership_plan")) {
+                    if (!rs.next()) {
+                        stmt.execute("ALTER TABLE users ADD COLUMN membership_plan VARCHAR(50) DEFAULT NULL");
+                        stmt.execute("ALTER TABLE users ADD COLUMN membership_price DECIMAL(10, 2) DEFAULT 0.00");
+                        stmt.execute("ALTER TABLE users ADD COLUMN membership_start_date DATE DEFAULT NULL");
+                        stmt.execute("ALTER TABLE users ADD COLUMN membership_end_date DATE DEFAULT NULL");
+                        stmt.execute("ALTER TABLE users ADD COLUMN membership_duration_days INT DEFAULT 0");
+                    }
+                }
+            } catch (Exception ex) {
+                System.err.println("Note on users membership columns migration: " + ex.getMessage());
+            }
+
             stmt.execute(createFeePaymentsSQL);
 
             // Add gym_id to fee_payments if not present

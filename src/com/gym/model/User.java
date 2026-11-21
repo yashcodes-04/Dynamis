@@ -14,6 +14,11 @@ public class User {
     private String passwordHash;
     private Role role;
     private Timestamp createdAt;
+    private String membershipPlan;
+    private Double membershipPrice;
+    private java.time.LocalDate membershipStartDate;
+    private java.time.LocalDate membershipEndDate;
+    private Integer membershipDurationDays;
 
     public User() {}
 
@@ -98,5 +103,45 @@ public class User {
 
     public void setCreatedAt(Timestamp createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getMembershipPlan() {
+        return membershipPlan;
+    }
+
+    public void setMembershipPlan(String membershipPlan) {
+        this.membershipPlan = membershipPlan;
+    }
+
+    public Double getMembershipPrice() {
+        return membershipPrice;
+    }
+
+    public void setMembershipPrice(Double membershipPrice) {
+        this.membershipPrice = membershipPrice;
+    }
+
+    public java.time.LocalDate getMembershipStartDate() {
+        return membershipStartDate;
+    }
+
+    public void setMembershipStartDate(java.time.LocalDate membershipStartDate) {
+        this.membershipStartDate = membershipStartDate;
+    }
+
+    public java.time.LocalDate getMembershipEndDate() {
+        return membershipEndDate;
+    }
+
+    public void setMembershipEndDate(java.time.LocalDate membershipEndDate) {
+        this.membershipEndDate = membershipEndDate;
+    }
+
+    public Integer getMembershipDurationDays() {
+        return membershipDurationDays;
+    }
+
+    public void setMembershipDurationDays(Integer membershipDurationDays) {
+        this.membershipDurationDays = membershipDurationDays;
     }
 }

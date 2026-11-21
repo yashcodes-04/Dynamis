@@ -4,16 +4,20 @@
 package com.gym.dao;
 
 import com.gym.config.DBConnection;
+import com.gym.model.FeePayment;
 import com.gym.model.Role;
 import com.gym.model.User;
+import com.gym.session.UserSession;
 import com.gym.util.PasswordUtil;
 
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 
 public class UserDAO {
 
@@ -73,7 +77,9 @@ public class UserDAO {
     }
 
     public User authenticate(String email, String plainPassword) throws SQLException {
-        String query = "SELECT id, gym_id, full_name, email, phone, password_hash, role, created_at FROM users WHERE LOWER(email) = LOWER(?)";
+        String query = "SELECT id, gym_id, full_name, email, phone, password_hash, role, created_at, "
+                + "membership_plan, membership_price, membership_start_date, membership_end_date, membership_duration_days "
+                + "FROM users WHERE LOWER(email) = LOWER(?)";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(query)) {
@@ -87,7 +93,7 @@ public class UserDAO {
                                 : LocalDate.now().getYear();
                         String fallbackId = String.valueOf(year) + (1000 + rs.getInt("id"));
 
-                        return new User(
+                        User user = new User(
                                 rs.getInt("id"),
                                 rs.getString("gym_id") != null ? rs.getString("gym_id") : fallbackId,
                                 rs.getString("full_name"),
@@ -97,10 +103,116 @@ public class UserDAO {
                                 Role.fromString(rs.getString("role")),
                                 rs.getTimestamp("created_at")
                         );
+
+                        // Load membership details from database if already present
+                        try {
+                            String plan = rs.getString("membership_plan");
+                            double price = rs.getDouble("membership_price");
+                            Date startD = rs.getDate("membership_start_date");
+                            Date endD = rs.getDate("membership_end_date");
+                            int days = rs.getInt("membership_duration_days");
+
+                            if (plan != null && !plan.trim().isEmpty()) {
+                                user.setMembershipPlan(plan);
+                                user.setMembershipPrice(price);
+                                user.setMembershipDurationDays(days);
+                                LocalDate start = startD != null ? startD.toLocalDate() : LocalDate.now();
+                                LocalDate end = endD != null ? endD.toLocalDate() : start.plusDays(days > 0 ? days : 30);
+                                user.setMembershipStartDate(start);
+                                user.setMembershipEndDate(end);
+
+                                UserSession.setMembership(plan, price, days, start, end);
+                            }
+                        } catch (Exception ex) {
+                            System.err.println("Note reading membership columns: " + ex.getMessage());
+                        }
+
+                        return user;
                     }
                 }
             }
         }
         return null;
+    }
+
+    /**
+     * Synchronizes a user's membership plan, start date, and end date from the database into UserSession.
+     */
+    public void syncUserMembership(User user) {
+        if (user == null) return;
+        String sql = "SELECT membership_plan, membership_price, membership_start_date, membership_end_date, membership_duration_days "
+                   + "FROM users WHERE LOWER(email) = ? OR LOWER(gym_id) = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, user.getEmail().trim().toLowerCase());
+            ps.setString(2, user.getGymId() != null ? user.getGymId().trim().toLowerCase() : "");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String plan = rs.getString("membership_plan");
+                    double price = rs.getDouble("membership_price");
+                    Date startD = rs.getDate("membership_start_date");
+                    Date endD = rs.getDate("membership_end_date");
+                    int days = rs.getInt("membership_duration_days");
+
+                    if (plan != null && !plan.trim().isEmpty()) {
+                        user.setMembershipPlan(plan);
+                        user.setMembershipPrice(price);
+                        user.setMembershipDurationDays(days);
+                        LocalDate start = startD != null ? startD.toLocalDate() : LocalDate.now();
+                        LocalDate end = endD != null ? endD.toLocalDate() : start.plusDays(days > 0 ? days : 30);
+                        user.setMembershipStartDate(start);
+                        user.setMembershipEndDate(end);
+                        UserSession.setMembership(plan, price, days, start, end);
+                        return;
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            System.err.println("Note syncing user membership from users: " + ex.getMessage());
+        }
+
+        // Fallback: Check fee_payments table
+        try {
+            ReceptionistDAO dao = new ReceptionistDAO();
+            FeePayment fp = dao.getLatestFeePayment(user.getGymId(), user.getEmail());
+            if (fp != null && fp.getPlanType() != null && fp.getRenewalDueDate() != null) {
+                String plan = fp.getPlanType();
+                double price = fp.getAmount();
+                LocalDate end = fp.getRenewalDueDate().toLocalDate();
+                LocalDate start = fp.getPaymentDate() != null ? fp.getPaymentDate().toLocalDateTime().toLocalDate() : LocalDate.now();
+                int days = (int) Math.max(0, ChronoUnit.DAYS.between(start, end));
+                user.setMembershipPlan(plan);
+                user.setMembershipPrice(price);
+                user.setMembershipStartDate(start);
+                user.setMembershipEndDate(end);
+                user.setMembershipDurationDays(days);
+                UserSession.setMembership(plan, price, days, start, end);
+            }
+        } catch (Exception ex) {
+            System.err.println("Note syncing user membership from fee_payments: " + ex.getMessage());
+        }
+    }
+
+    /**
+     * Updates the membership plan, start date, and end date in the MySQL database.
+     */
+    public boolean updateMemberMembership(String emailOrGymId, String plan, double price, int durationDays, LocalDate startDate, LocalDate endDate) {
+        String sql = "UPDATE users SET membership_plan = ?, membership_price = ?, membership_duration_days = ?, membership_start_date = ?, membership_end_date = ? "
+                   + "WHERE LOWER(email) = ? OR LOWER(gym_id) = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, plan);
+            ps.setDouble(2, price);
+            ps.setInt(3, durationDays);
+            ps.setDate(4, Date.valueOf(startDate));
+            ps.setDate(5, Date.valueOf(endDate));
+            ps.setString(6, emailOrGymId.trim().toLowerCase());
+            ps.setString(7, emailOrGymId.trim().toLowerCase());
+
+            return ps.executeUpdate() > 0;
+        } catch (Exception ex) {
+            System.err.println("Error updating user membership in DB: " + ex.getMessage());
+            return false;
+        }
     }
 }

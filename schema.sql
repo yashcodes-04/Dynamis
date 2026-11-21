@@ -12,6 +12,11 @@ CREATE TABLE IF NOT EXISTS users (
     phone VARCHAR(20),
     password_hash VARCHAR(255) NOT NULL,
     role ENUM('MEMBER', 'RECEPTIONIST', 'TRAINER', 'OWNER') NOT NULL,
+    membership_plan VARCHAR(50) DEFAULT NULL,
+    membership_price DECIMAL(10, 2) DEFAULT 0.00,
+    membership_start_date DATE DEFAULT NULL,
+    membership_end_date DATE DEFAULT NULL,
+    membership_duration_days INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

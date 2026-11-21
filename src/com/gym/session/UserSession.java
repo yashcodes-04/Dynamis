@@ -13,7 +13,9 @@ public class UserSession {
     private static User currentUser;
     private static String membershipPlan;
     private static Double membershipPrice;
+    private static LocalDate membershipStartDate;
     private static LocalDate renewalDueDate;
+    private static int membershipDurationDays;
 
     public static void setCurrentUser(User user) {
         currentUser = user;
@@ -32,23 +34,44 @@ public class UserSession {
     }
 
     public static void setMembership(String plan, double price, int months) {
-        membershipPlan = plan;
-        membershipPrice = price;
-        renewalDueDate = LocalDate.now().plusMonths(months);
+        int days = months == 1 ? 30 : (months == 3 ? 90 : (months == 6 ? 180 : (months == 12 ? 365 : months * 30)));
+        LocalDate start = LocalDate.now();
+        LocalDate due = start.plusDays(days);
+        setMembership(plan, price, days, start, due);
     }
 
     public static void setMembership(String plan, double price, LocalDate dueDate) {
-        membershipPlan = plan;
-        membershipPrice = price;
-        renewalDueDate = dueDate;
+        LocalDate start = LocalDate.now();
+        int days = (int) Math.max(0, ChronoUnit.DAYS.between(start, dueDate));
+        setMembership(plan, price, days, start, dueDate);
     }
 
+    public static void setMembership(String plan, double price, int durationDays, LocalDate startDate, LocalDate endDate) {
+        membershipPlan = plan;
+        membershipPrice = price;
+        membershipDurationDays = durationDays;
+        membershipStartDate = startDate;
+        renewalDueDate = endDate;
+    }
+
+    /**
+     * Calculates days of membership left based on current date.
+     * Returns 0 if membership plan is null, due date is null, or due date has passed.
+     */
     public static long getDaysLeft() {
-        if (renewalDueDate == null) {
-            return 30;
+        if (membershipPlan == null || renewalDueDate == null) {
+            return 0;
         }
-        long days = ChronoUnit.DAYS.between(LocalDate.now(), renewalDueDate);
+        LocalDate today = LocalDate.now();
+        if (today.isAfter(renewalDueDate)) {
+            return 0;
+        }
+        long days = ChronoUnit.DAYS.between(today, renewalDueDate);
         return Math.max(0, days);
+    }
+
+    public static boolean hasActiveValidMembership() {
+        return membershipPlan != null && getDaysLeft() > 0;
     }
 
     public static String getMembershipPlan() {
@@ -59,8 +82,16 @@ public class UserSession {
         return membershipPrice;
     }
 
+    public static LocalDate getMembershipStartDate() {
+        return membershipStartDate;
+    }
+
     public static LocalDate getRenewalDueDate() {
         return renewalDueDate;
+    }
+
+    public static int getMembershipDurationDays() {
+        return membershipDurationDays;
     }
 
     public static boolean hasActiveMembership() {
@@ -71,6 +102,8 @@ public class UserSession {
         currentUser = null;
         membershipPlan = null;
         membershipPrice = null;
+        membershipStartDate = null;
         renewalDueDate = null;
+        membershipDurationDays = 0;
     }
 }

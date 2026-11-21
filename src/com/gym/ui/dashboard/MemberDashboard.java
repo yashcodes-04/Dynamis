@@ -5,6 +5,7 @@ package com.gym.ui.dashboard;
 
 import com.gym.dao.BookingDAO;
 import com.gym.dao.ReceptionistDAO;
+import com.gym.dao.UserDAO;
 import com.gym.model.BookedSession;
 import com.gym.model.FeePayment;
 import com.gym.model.Role;
@@ -421,22 +422,44 @@ public class MemberDashboard extends BaseDashboard {
         }
     }
 
-    public void updateMembership(String planName, double price, int months) {
-        LocalDate dueDate = LocalDate.now().plusMonths(months);
-        UserSession.setMembership(planName, price, dueDate);
+    public void updateMembership(String planName, double price, int durationDays) {
+        LocalDate startDate = LocalDate.now();
+        LocalDate dueDate = startDate.plusDays(durationDays);
+        UserSession.setMembership(planName, price, durationDays, startDate, dueDate);
         updateMembershipDisplay();
     }
 
     private void updateMembershipDisplay() {
-        String plan = UserSession.getMembershipPlan() != null ? UserSession.getMembershipPlan() : "Monthly Pass";
-        Double price = UserSession.getMembershipPrice() != null ? UserSession.getMembershipPrice() : 1500.0;
+        String plan = UserSession.getMembershipPlan();
+        LocalDate startDate = UserSession.getMembershipStartDate();
         LocalDate dueDate = UserSession.getRenewalDueDate();
-        if (dueDate == null) {
-            dueDate = LocalDate.now().plusDays(30);
+        long daysLeft = UserSession.getDaysLeft();
+
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd MMM yyyy");
+
+        // Case 1: Plan is null or days have expired (0 days left)
+        if (plan == null || daysLeft <= 0) {
+            if (membershipStatusVal != null) {
+                membershipStatusVal.setText("EXPIRED");
+            }
+            if (membershipStatusSub != null) {
+                membershipStatusSub.setText(plan != null ? plan + " • 0d left" : "No Plan Selected");
+            }
+            if (membershipDaysVal != null) {
+                membershipDaysVal.setText("0 Days Left");
+            }
+            if (membershipDaysSub != null) {
+                membershipDaysSub.setText(dueDate != null ? "Expired on " + dueDate.format(fmt) : "Plan Required");
+                membershipDaysSub.setForeground(Theme.ERROR_COLOR);
+            }
+            if (summaryMembershipExpiry != null) {
+                summaryMembershipExpiry.setText("• Membership Plan: " + (plan != null ? plan : "None") + " (EXPIRED - 0 Days Left)");
+                summaryMembershipExpiry.setForeground(Theme.ERROR_COLOR);
+            }
+            return;
         }
 
-        long daysLeft = Math.max(0, ChronoUnit.DAYS.between(LocalDate.now(), dueDate));
-
+        // Case 2: Active plan with days left > 0
         if (membershipStatusVal != null) {
             membershipStatusVal.setText("ACTIVE");
         }
@@ -444,7 +467,6 @@ public class MemberDashboard extends BaseDashboard {
             membershipStatusSub.setText(plan + " • " + daysLeft + "d left");
         }
 
-        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd MMM yyyy");
         String formattedDate = dueDate.format(fmt);
 
         if (membershipDaysVal != null) {
@@ -462,6 +484,7 @@ public class MemberDashboard extends BaseDashboard {
 
         if (summaryMembershipExpiry != null) {
             summaryMembershipExpiry.setText("• Membership Plan: " + plan + " (" + daysLeft + " Days Left till " + formattedDate + ")");
+            summaryMembershipExpiry.setForeground(Theme.ROLE_OWNER_COLOR);
         }
     }
 
@@ -469,14 +492,9 @@ public class MemberDashboard extends BaseDashboard {
     public void refreshUserInfo() {
         super.refreshUserInfo();
         User user = UserSession.getCurrentUser();
-        if (user != null && UserSession.getRenewalDueDate() == null) {
-            ReceptionistDAO dao = new ReceptionistDAO();
-            FeePayment fp = dao.getLatestFeePayment(user.getGymId(), user.getEmail());
-            if (fp != null && fp.getRenewalDueDate() != null) {
-                UserSession.setMembership(fp.getPlanType(), fp.getAmount(), fp.getRenewalDueDate().toLocalDate());
-            } else if (UserSession.getMembershipPlan() == null) {
-                UserSession.setMembership("Monthly Pass", 1500.0, 1);
-            }
+        if (user != null) {
+            UserDAO dao = new UserDAO();
+            dao.syncUserMembership(user);
         }
         updateMembershipDisplay();
         loadBookedSessions();
