@@ -220,6 +220,46 @@ public class DBConnection {
 
             stmt.execute(createAttendanceSQL);
             stmt.execute(createBookedSessionsSQL);
+
+            String createTraineesSQL = "CREATE TABLE IF NOT EXISTS trainees ("
+                    + "id INT AUTO_INCREMENT PRIMARY KEY,"
+                    + "gym_id VARCHAR(20) UNIQUE,"
+                    + "full_name VARCHAR(100) NOT NULL,"
+                    + "email VARCHAR(100) NOT NULL UNIQUE,"
+                    + "phone VARCHAR(20),"
+                    + "body_type VARCHAR(50) DEFAULT 'Mesomorph',"
+                    + "fitness_goal VARCHAR(100) DEFAULT 'General Fitness',"
+                    + "current_weight DECIMAL(5, 2) DEFAULT 70.00,"
+                    + "target_weight DECIMAL(5, 2) DEFAULT 75.00,"
+                    + "height_cm DECIMAL(5, 2) DEFAULT 175.00,"
+                    + "assigned_diet_plan VARCHAR(100) DEFAULT 'Standard Maintenance',"
+                    + "trainer_notes TEXT,"
+                    + "assigned_trainer VARCHAR(100) DEFAULT 'Lead Trainer',"
+                    + "status VARCHAR(50) DEFAULT 'Active',"
+                    + "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+                    + ");";
+
+            String createDietPlansSQL = "CREATE TABLE IF NOT EXISTS diet_plans ("
+                    + "id INT AUTO_INCREMENT PRIMARY KEY,"
+                    + "plan_name VARCHAR(100) NOT NULL UNIQUE,"
+                    + "body_type VARCHAR(50) NOT NULL,"
+                    + "goal VARCHAR(100) NOT NULL,"
+                    + "daily_calories INT NOT NULL,"
+                    + "protein_grams INT NOT NULL,"
+                    + "carbs_grams INT NOT NULL,"
+                    + "fats_grams INT NOT NULL,"
+                    + "water_liters DECIMAL(3, 1) NOT NULL,"
+                    + "breakfast TEXT,"
+                    + "mid_morning_snack TEXT,"
+                    + "lunch TEXT,"
+                    + "pre_workout TEXT,"
+                    + "post_workout TEXT,"
+                    + "dinner TEXT,"
+                    + "guidelines TEXT"
+                    + ");";
+
+            stmt.execute(createTraineesSQL);
+            stmt.execute(createDietPlansSQL);
         } catch (SQLException e) {
             System.err.println("Note on table check: " + e.getMessage());
         }
