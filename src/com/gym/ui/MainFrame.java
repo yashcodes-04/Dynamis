@@ -39,8 +39,8 @@ public class MainFrame extends JFrame {
     public MainFrame() {
         setTitle("Dynamis Gym - Multi-Role Portal");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(1150, 780);
-        setMinimumSize(new Dimension(900, 650));
+        setSize(1280, 820);
+        setMinimumSize(new Dimension(1080, 700));
         setLocationRelativeTo(null);
 
         initViews();

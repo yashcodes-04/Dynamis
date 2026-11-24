@@ -126,6 +126,13 @@ public class MemberDashboard extends BaseDashboard {
         };
         JTable table = new JTable(scheduleModel);
         styleTable(table);
+
+        // Ample column widths so Workout Target and Trainer names do not truncate with (...)
+        table.getColumnModel().getColumn(0).setPreferredWidth(95);  // Day
+        table.getColumnModel().getColumn(1).setPreferredWidth(210); // Workout Target
+        table.getColumnModel().getColumn(2).setPreferredWidth(130); // Trainer
+        table.getColumnModel().getColumn(3).setPreferredWidth(95);  // Time Slot
+
         JScrollPane scrollPane = Theme.createModernScrollPane(table);
         scrollPane.setBorder(BorderFactory.createEmptyBorder(12, 0, 0, 0));
         scrollPane.setPreferredSize(new Dimension(scrollPane.getPreferredSize().width, 215));
@@ -242,6 +249,13 @@ public class MemberDashboard extends BaseDashboard {
                 return c;
             }
         });
+
+        // Ample column widths so Class names and Schedule slots never truncate with (...)
+        bookedTable.getColumnModel().getColumn(0).setPreferredWidth(210); // Class
+        bookedTable.getColumnModel().getColumn(1).setPreferredWidth(90);  // Duration
+        bookedTable.getColumnModel().getColumn(2).setPreferredWidth(115); // Price / Session
+        bookedTable.getColumnModel().getColumn(3).setPreferredWidth(190); // Schedule Slot
+        bookedTable.getColumnModel().getColumn(4).setPreferredWidth(105); // Status
 
         JScrollPane bookedScrollPane = Theme.createModernScrollPane(bookedTable);
         bookedScrollPane.setBorder(BorderFactory.createEmptyBorder());

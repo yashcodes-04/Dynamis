@@ -66,6 +66,13 @@ public class OwnerDashboard extends BaseDashboard {
         };
         JTable table = new JTable(staffModel);
         styleTable(table);
+
+        // Generous column widths so employee names and assignments do not truncate with (...)
+        table.getColumnModel().getColumn(0).setPreferredWidth(160); // Employee Name
+        table.getColumnModel().getColumn(1).setPreferredWidth(170); // Role
+        table.getColumnModel().getColumn(2).setPreferredWidth(180); // Assigned Area
+        table.getColumnModel().getColumn(3).setPreferredWidth(110); // Status
+
         JScrollPane scrollPane = Theme.createModernScrollPane(table);
         scrollPane.setBorder(BorderFactory.createEmptyBorder(12, 0, 0, 0));
         staffCard.add(scrollPane, BorderLayout.CENTER);

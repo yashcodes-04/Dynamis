@@ -153,7 +153,7 @@ public abstract class BaseDashboard extends JPanel {
         card.setOpaque(false);
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBorder(new EmptyBorder(16, 22, 16, 20));
-        card.setPreferredSize(new Dimension(220, 110));
+        card.setPreferredSize(new Dimension(240, 115));
 
         JLabel titleLbl = new JLabel(title);
         titleLbl.setFont(Theme.FONT_SMALL);
@@ -180,7 +180,7 @@ public abstract class BaseDashboard extends JPanel {
         table.setBackground(Theme.CARD_BG);
         table.setForeground(Theme.TEXT_LIGHT);
         table.setFont(Theme.FONT_BODY);
-        table.setRowHeight(34);
+        table.setRowHeight(36);
         table.setGridColor(Theme.CARD_BORDER);
         table.setShowVerticalLines(false);
         table.setShowHorizontalLines(true);
@@ -197,16 +197,16 @@ public abstract class BaseDashboard extends JPanel {
                 c.setForeground(new Color(15, 15, 18)); // Solid black text
                 c.setBackground(new Color(228, 231, 238)); // Light clean header background
                 ((JLabel) c).setHorizontalAlignment(JLabel.LEFT);
-                ((JLabel) c).setBorder(new EmptyBorder(0, 10, 0, 10));
+                ((JLabel) c).setBorder(new EmptyBorder(0, 12, 0, 12));
                 return c;
             }
         };
         table.getTableHeader().setDefaultRenderer(headerRenderer);
-        table.getTableHeader().setPreferredSize(new Dimension(table.getTableHeader().getWidth(), 36));
+        table.getTableHeader().setPreferredSize(new Dimension(table.getTableHeader().getWidth(), 38));
         table.getTableHeader().setReorderingAllowed(false);
 
-        // Row renderer with padding, alternating rows, and smooth selection (no white focused cell)
-        table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+        // Universal Row renderer with padding, alternating rows, and smooth selection (no white focused cell)
+        DefaultTableCellRenderer cellRenderer = new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable tbl, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
                 Component c = super.getTableCellRendererComponent(tbl, value, isSelected, false, row, column);
@@ -217,9 +217,18 @@ public abstract class BaseDashboard extends JPanel {
                     c.setBackground(row % 2 == 0 ? Theme.CARD_BG : new Color(30, 34, 46));
                     c.setForeground(Theme.TEXT_LIGHT);
                 }
-                setBorder(new EmptyBorder(0, 10, 0, 10));
+                setBorder(new EmptyBorder(0, 12, 0, 12));
                 return c;
             }
-        });
+        };
+
+        // Register for all standard data types so no column falls back to Windows light defaults
+        table.setDefaultRenderer(Object.class, cellRenderer);
+        table.setDefaultRenderer(String.class, cellRenderer);
+        table.setDefaultRenderer(Number.class, cellRenderer);
+        table.setDefaultRenderer(Integer.class, cellRenderer);
+        table.setDefaultRenderer(Double.class, cellRenderer);
+        table.setDefaultRenderer(java.util.Date.class, cellRenderer);
+        table.setDefaultRenderer(java.sql.Timestamp.class, cellRenderer);
     }
 }

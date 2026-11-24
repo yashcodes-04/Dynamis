@@ -219,11 +219,11 @@ public class BookClassDialog extends JDialog {
         table.getColumnModel().getColumn(0).setCellRenderer(new CheckBoxCellRenderer());
 
         // Column widths
-        table.getColumnModel().getColumn(1).setPreferredWidth(190); // Class Name
+        table.getColumnModel().getColumn(1).setPreferredWidth(210); // Class Name
         table.getColumnModel().getColumn(2).setPreferredWidth(130); // Level
-        table.getColumnModel().getColumn(3).setPreferredWidth(110); // Duration
-        table.getColumnModel().getColumn(4).setPreferredWidth(140); // Price / Session
-        table.getColumnModel().getColumn(5).setPreferredWidth(210); // Schedule Slot
+        table.getColumnModel().getColumn(3).setPreferredWidth(100); // Duration
+        table.getColumnModel().getColumn(4).setPreferredWidth(130); // Price / Session
+        table.getColumnModel().getColumn(5).setPreferredWidth(220); // Schedule Slot
 
         // Custom Renderer for regular columns
         DefaultTableCellRenderer cellRenderer = new DefaultTableCellRenderer() {

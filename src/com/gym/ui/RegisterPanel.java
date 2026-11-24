@@ -77,26 +77,7 @@ public class RegisterPanel extends JPanel {
 
         // Role Selector with clean full text that does not truncate
         roleComboBox = new JComboBox<>(Role.values());
-        roleComboBox.setBackground(Theme.INPUT_BG);
-        roleComboBox.setForeground(Theme.TEXT_LIGHT);
-        roleComboBox.setFont(Theme.FONT_BODY);
-        roleComboBox.setPreferredSize(new Dimension(roleComboBox.getPreferredSize().width, 42));
-        roleComboBox.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
-        roleComboBox.setBorder(Theme.createFieldBorder(Theme.INPUT_BORDER));
-        roleComboBox.setUI(new BasicComboBoxUI() {
-            @Override
-            protected JButton createArrowButton() {
-                JButton btn = new JButton("▼");
-                btn.setFont(new Font("Segoe UI", Font.PLAIN, 10));
-                btn.setForeground(Theme.TEXT_MUTED);
-                btn.setBackground(Theme.INPUT_BG);
-                btn.setBorder(BorderFactory.createEmptyBorder(0, 6, 0, 10));
-                btn.setContentAreaFilled(false);
-                btn.setFocusPainted(false);
-                return btn;
-            }
-        });
-
+        Theme.styleComboBox(roleComboBox);
         roleComboBox.setRenderer(new DefaultListCellRenderer() {
             @Override
             public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
@@ -105,8 +86,11 @@ public class RegisterPanel extends JPanel {
                     Role r = (Role) value;
                     setText(r.getDisplayName());
                 }
+                list.setBackground(Theme.INPUT_BG);
+                list.setSelectionBackground(Theme.ACCENT_PRIMARY);
+                list.setSelectionForeground(Color.WHITE);
                 setBackground(isSelected ? Theme.ACCENT_PRIMARY : Theme.INPUT_BG);
-                setForeground(Theme.TEXT_LIGHT);
+                setForeground(isSelected ? Color.WHITE : Theme.TEXT_LIGHT);
                 setBorder(new EmptyBorder(8, 12, 8, 12));
                 return this;
             }

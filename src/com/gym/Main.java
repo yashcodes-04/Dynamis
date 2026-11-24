@@ -18,6 +18,9 @@ public class Main {
         } catch (Exception ignored) {
         }
 
+        // Apply dark theme and contrast overrides after system look & feel initialization
+        com.gym.ui.Theme.applyGlobalTheme();
+
         SwingUtilities.invokeLater(() -> {
             MainFrame app = new MainFrame();
             app.setVisible(true);

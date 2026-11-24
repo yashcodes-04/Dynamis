@@ -332,11 +332,27 @@ public class ReceptionistDAO implements GenericDAO<FeePayment, Integer> {
     }
 
     /**
-     * Retrieves today's attendance history and applies Stream filtering (Lecture 21-23).
+     * Syllabus Unit 4 (Lecture 19, 20): CRUD - Delete operation on attendance records.
+     * Allows receptionist to remove mistaken or canceled check-in entries.
      */
-    public List<AttendanceRecord> getAttendanceHistory(String filter) throws SQLException {
+    public boolean deleteAttendanceRecord(int attendanceId) throws SQLException {
+        String deleteSQL = "DELETE FROM attendance WHERE id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(deleteSQL)) {
+            ps.setInt(1, attendanceId);
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    /**
+     * Retrieves attendance history and applies Stream filtering (Lecture 21-23).
+     * Filters strictly to today's check-ins when todayOnly is true.
+     */
+    public List<AttendanceRecord> getAttendanceHistory(String filter, boolean todayOnly) throws SQLException {
         List<AttendanceRecord> list = new ArrayList<>();
-        String sql = "SELECT id, gym_id, member_name, member_email, check_in_time FROM attendance ORDER BY check_in_time DESC";
+        String sql = "SELECT id, gym_id, member_name, member_email, check_in_time FROM attendance "
+                + (todayOnly ? "WHERE DATE(check_in_time) = CURRENT_DATE() " : "")
+                + "ORDER BY check_in_time DESC";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
@@ -364,6 +380,10 @@ public class ReceptionistDAO implements GenericDAO<FeePayment, Integer> {
                            || (ar.getMemberName() != null && ar.getMemberName().toLowerCase().contains(keyword))
                            || (ar.getMemberEmail() != null && ar.getMemberEmail().toLowerCase().contains(keyword)))
                 .collect(Collectors.toList());
+    }
+
+    public List<AttendanceRecord> getAttendanceHistory(String filter) throws SQLException {
+        return getAttendanceHistory(filter, true); // Default: strictly today's check-ins
     }
 
     public int getTodayAttendanceCount() throws SQLException {

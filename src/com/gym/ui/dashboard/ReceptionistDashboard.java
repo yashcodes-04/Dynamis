@@ -17,6 +17,7 @@ import com.gym.model.Role;
 import com.gym.model.User;
 import com.gym.ui.MainFrame;
 import com.gym.ui.Theme;
+import com.gym.ui.ThemedDialog;
 import com.gym.util.FileExportUtil;
 import com.gym.util.LiveDeskTracker;
 import com.gym.util.ReceptionDeskEventQueue;
@@ -105,6 +106,8 @@ public class ReceptionistDashboard extends BaseDashboard {
     private JTable attendanceTable;
     private DefaultTableModel attendanceTableModel;
     private JLabel attendanceCountLabel;
+    private JCheckBox showAllDatesCheck;
+    private JLabel logTitle;
     private List<AttendanceRecord> currentLoadedAttendance;
 
     public ReceptionistDashboard(MainFrame mainFrame) {
@@ -356,16 +359,16 @@ public class ReceptionistDashboard extends BaseDashboard {
         subtitle2.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         planComboBox = new JComboBox<>(plans);
-        styleComboBox(planComboBox);
+        Theme.styleComboBox(planComboBox);
         planComboBox.addActionListener(e -> updatePlanCalculations());
 
         amountField = Theme.createStyledTextField();
         amountField.setText(String.format("%.2f", planPrices[0]));
-        amountField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+        amountField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
 
         String[] modes = {"Cash", "UPI / QR Code", "Credit/Debit Card", "Bank Transfer"};
         paymentModeComboBox = new JComboBox<>(modes);
-        styleComboBox(paymentModeComboBox);
+        Theme.styleComboBox(paymentModeComboBox);
 
         renewalPreviewLabel = new JLabel("Next Renewal Due: " + LocalDate.now().plusMonths(1));
         renewalPreviewLabel.setFont(Theme.FONT_BOLD);
@@ -560,12 +563,12 @@ public class ReceptionistDashboard extends BaseDashboard {
         // Syllabus Unit 2 (Lecture 8): Sorting with Comparator dropdown
         String[] sortOptions = {"Sort: Latest Date", "Sort: Highest Amount", "Sort: Member Name (A-Z)"};
         sortOrderCombo = new JComboBox<>(sortOptions);
-        styleComboBox(sortOrderCombo);
-        sortOrderCombo.setPreferredSize(new Dimension(170, 36));
+        Theme.styleComboBox(sortOrderCombo);
+        sortOrderCombo.setPreferredSize(new Dimension(190, 40));
         sortOrderCombo.addActionListener(e -> applyCurrentSorting());
 
         renewalSearchField = Theme.createStyledTextField();
-        renewalSearchField.setPreferredSize(new Dimension(180, 36));
+        renewalSearchField.setPreferredSize(new Dimension(200, 40));
         renewalSearchField.setToolTipText("Filter by Gym ID, Name, or Email");
         renewalSearchField.addActionListener(e -> loadRenewalData(renewalSearchField.getText().trim()));
 
@@ -605,15 +608,16 @@ public class ReceptionistDashboard extends BaseDashboard {
         renewalTable = new JTable(renewalTableModel);
         styleTable(renewalTable);
 
-        renewalTable.getColumnModel().getColumn(0).setPreferredWidth(45);
-        renewalTable.getColumnModel().getColumn(1).setPreferredWidth(130);
-        renewalTable.getColumnModel().getColumn(2).setPreferredWidth(90);
-        renewalTable.getColumnModel().getColumn(3).setPreferredWidth(130);
-        renewalTable.getColumnModel().getColumn(4).setPreferredWidth(160);
-        renewalTable.getColumnModel().getColumn(5).setPreferredWidth(160);
-        renewalTable.getColumnModel().getColumn(6).setPreferredWidth(100);
-        renewalTable.getColumnModel().getColumn(7).setPreferredWidth(90);
-        renewalTable.getColumnModel().getColumn(8).setPreferredWidth(100);
+        // Generous column widths so no ellipsis (...) occurs on 9-column history table
+        renewalTable.getColumnModel().getColumn(0).setPreferredWidth(55);  // ID
+        renewalTable.getColumnModel().getColumn(1).setPreferredWidth(165); // Payment Date
+        renewalTable.getColumnModel().getColumn(2).setPreferredWidth(105); // Gym ID
+        renewalTable.getColumnModel().getColumn(3).setPreferredWidth(165); // Member Name
+        renewalTable.getColumnModel().getColumn(4).setPreferredWidth(210); // Email
+        renewalTable.getColumnModel().getColumn(5).setPreferredWidth(260); // Plan
+        renewalTable.getColumnModel().getColumn(6).setPreferredWidth(110); // Amount (Rs.)
+        renewalTable.getColumnModel().getColumn(7).setPreferredWidth(100); // Mode
+        renewalTable.getColumnModel().getColumn(8).setPreferredWidth(110); // Renewal Due
 
         JScrollPane scrollPane = Theme.createModernScrollPane(renewalTable);
         screen.add(scrollPane, BorderLayout.CENTER);
@@ -777,16 +781,33 @@ public class ReceptionistDashboard extends BaseDashboard {
         JPanel logTopBar = new JPanel(new BorderLayout(8, 0));
         logTopBar.setOpaque(false);
 
-        JLabel logTitle = new JLabel("Today's Live Check-in Log");
+        logTitle = new JLabel("Today's Live Check-in Log (" + LocalDate.now() + ")");
         logTitle.setFont(Theme.FONT_HEADER);
         logTitle.setForeground(Theme.TEXT_LIGHT);
 
-        JPanel attendanceActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        JPanel attendanceActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         attendanceActions.setOpaque(false);
 
         attendanceCountLabel = new JLabel("Loading today's check-ins...");
         attendanceCountLabel.setFont(Theme.FONT_SMALL);
         attendanceCountLabel.setForeground(Theme.TEXT_MUTED);
+
+        showAllDatesCheck = new JCheckBox("Show All Dates");
+        showAllDatesCheck.setFont(Theme.FONT_SMALL);
+        showAllDatesCheck.setForeground(Theme.TEXT_MUTED);
+        showAllDatesCheck.setOpaque(false);
+        showAllDatesCheck.setFocusPainted(false);
+        showAllDatesCheck.setToolTipText("Check to search and view check-ins from all dates; uncheck to view strictly today's check-ins");
+        showAllDatesCheck.addActionListener(e -> {
+            boolean allDates = showAllDatesCheck.isSelected();
+            logTitle.setText(allDates ? "All Attendance Check-in Logs" : "Today's Live Check-in Log (" + LocalDate.now() + ")");
+            loadAttendanceData("");
+        });
+
+        JButton deleteAttBtn = Theme.createSecondaryButton("Delete Selected Check-in");
+        deleteAttBtn.setBackground(new Color(153, 27, 27)); // Crimson Red for CRUD Delete
+        deleteAttBtn.setEnabled(false);
+        deleteAttBtn.addActionListener(e -> handleDeleteAttendance());
 
         JButton importAttBtn = Theme.createSecondaryButton("Import CSV");
         importAttBtn.setBackground(new Color(30, 58, 138));
@@ -797,6 +818,8 @@ public class ReceptionistDashboard extends BaseDashboard {
         exportAttBtn.addActionListener(e -> handleExportAttendanceCSV());
 
         attendanceActions.add(attendanceCountLabel);
+        attendanceActions.add(showAllDatesCheck);
+        attendanceActions.add(deleteAttBtn);
         attendanceActions.add(importAttBtn);
         attendanceActions.add(exportAttBtn);
 
@@ -815,12 +838,18 @@ public class ReceptionistDashboard extends BaseDashboard {
         attendanceTable = new JTable(attendanceTableModel);
         styleTable(attendanceTable);
 
-        attendanceTable.getColumnModel().getColumn(0).setPreferredWidth(60);
-        attendanceTable.getColumnModel().getColumn(1).setPreferredWidth(160);
-        attendanceTable.getColumnModel().getColumn(2).setPreferredWidth(100);
-        attendanceTable.getColumnModel().getColumn(3).setPreferredWidth(160);
-        attendanceTable.getColumnModel().getColumn(4).setPreferredWidth(180);
-        attendanceTable.getColumnModel().getColumn(5).setPreferredWidth(90);
+        // Dynamically enable/disable Delete button based on table selection
+        attendanceTable.getSelectionModel().addListSelectionListener(e -> {
+            deleteAttBtn.setEnabled(attendanceTable.getSelectedRow() >= 0);
+        });
+
+        // Ample column widths so timestamps and emails never truncate with (...)
+        attendanceTable.getColumnModel().getColumn(0).setPreferredWidth(70);  // Entry ID
+        attendanceTable.getColumnModel().getColumn(1).setPreferredWidth(175); // Check-in Timestamp
+        attendanceTable.getColumnModel().getColumn(2).setPreferredWidth(110); // Gym ID
+        attendanceTable.getColumnModel().getColumn(3).setPreferredWidth(170); // Member Name
+        attendanceTable.getColumnModel().getColumn(4).setPreferredWidth(220); // Email Address
+        attendanceTable.getColumnModel().getColumn(5).setPreferredWidth(100); // Status
 
         JScrollPane scrollPane = Theme.createModernScrollPane(attendanceTable);
         logCard.add(scrollPane, BorderLayout.CENTER);
@@ -887,10 +916,11 @@ public class ReceptionistDashboard extends BaseDashboard {
     }
 
     private void loadAttendanceData(String filter) {
+        boolean todayOnly = showAllDatesCheck == null || !showAllDatesCheck.isSelected();
         SwingWorker<List<AttendanceRecord>, Void> worker = new SwingWorker<>() {
             @Override
             protected List<AttendanceRecord> doInBackground() throws Exception {
-                return receptionistDAO.getAttendanceHistory(filter);
+                return receptionistDAO.getAttendanceHistory(filter, todayOnly);
             }
 
             @Override
@@ -911,7 +941,11 @@ public class ReceptionistDashboard extends BaseDashboard {
                                 "PRESENT"
                         });
                     }
-                    attendanceCountLabel.setText("Total Check-ins: " + currentLoadedAttendance.size());
+                    if (todayOnly) {
+                        attendanceCountLabel.setText("Today's Check-ins: " + currentLoadedAttendance.size());
+                    } else {
+                        attendanceCountLabel.setText("All Check-ins: " + currentLoadedAttendance.size());
+                    }
                 } catch (Exception ex) {
                     attendanceCountLabel.setText("Error loading attendance: " + ex.getMessage());
                 }
@@ -998,6 +1032,64 @@ public class ReceptionistDashboard extends BaseDashboard {
         return matrix;
     }
 
+    /**
+     * Syllabus Unit 4 (Lecture 19, 20): CRUD - Delete Attendance Record
+     */
+    private void handleDeleteAttendance() {
+        int selectedRow = attendanceTable.getSelectedRow();
+        if (selectedRow < 0 || currentLoadedAttendance == null || selectedRow >= currentLoadedAttendance.size()) {
+            ThemedDialog.showInfo(this, "Selection Required", "Please select an attendance entry from the table to delete.");
+            return;
+        }
+
+        AttendanceRecord rec = currentLoadedAttendance.get(selectedRow);
+        boolean confirmed = ThemedDialog.showConfirm(
+                this,
+                "Confirm Attendance Deletion",
+                "Delete Check-In Record?",
+                "Are you sure you want to delete check-in #" + rec.getId() + " for:\n\n"
+                        + "• Member: " + rec.getMemberName() + " (" + rec.getGymId() + ")\n"
+                        + "• Email: " + rec.getMemberEmail() + "\n"
+                        + "• Time: " + (rec.getCheckInTime() != null ? rec.getCheckInTime() : "N/A") + "\n\n"
+                        + "This check-in will be permanently removed from today's attendance log.",
+                "Yes, Delete",
+                "Keep Record"
+        );
+
+        if (confirmed) {
+            SwingWorker<Boolean, Void> worker = new SwingWorker<>() {
+                @Override
+                protected Boolean doInBackground() throws Exception {
+                    return receptionistDAO.deleteAttendanceRecord(rec.getId());
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        boolean ok = get();
+                        if (ok) {
+                            attendanceStatusLabel.setText("REMOVED: Check-in #" + rec.getId() + " for " + rec.getMemberName() + " was deleted.");
+                            attendanceStatusLabel.setForeground(Theme.SUCCESS_COLOR);
+                            ReceptionDeskEventQueue.getInstance().produceDeskEvent("Attendance Removed: Check-in #" + rec.getId() + " for " + rec.getMemberName() + " (" + rec.getGymId() + ") was deleted.");
+                            loadAttendanceData("");
+                            loadMetrics();
+                            ThemedDialog.showSuccess(ReceptionistDashboard.this, "Check-in Removed", "Attendance record #" + rec.getId() + " for " + rec.getMemberName() + " has been successfully deleted.");
+                        } else {
+                            attendanceStatusLabel.setText("Failed to delete check-in record.");
+                            attendanceStatusLabel.setForeground(Theme.ERROR_COLOR);
+                            ThemedDialog.showError(ReceptionistDashboard.this, "Delete Failed", "Could not delete attendance record from the database.");
+                        }
+                    } catch (Exception ex) {
+                        attendanceStatusLabel.setText("Error deleting check-in: " + ex.getMessage());
+                        attendanceStatusLabel.setForeground(Theme.ERROR_COLOR);
+                        ThemedDialog.showError(ReceptionistDashboard.this, "Error", "An unexpected error occurred: " + ex.getMessage());
+                    }
+                }
+            };
+            worker.execute();
+        }
+    }
+
     // =========================================================================
     // SHARED UTILITIES & METRICS
     // =========================================================================
@@ -1040,15 +1132,6 @@ public class ReceptionistDashboard extends BaseDashboard {
         parent.add(Box.createVerticalStrut(4));
         parent.add(component);
         parent.add(Box.createVerticalStrut(10));
-    }
-
-    private void styleComboBox(JComboBox<?> box) {
-        box.setBackground(Theme.INPUT_BG);
-        box.setForeground(Theme.TEXT_LIGHT);
-        box.setFont(Theme.FONT_BODY);
-        box.setPreferredSize(new Dimension(box.getPreferredSize().width, 38));
-        box.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
-        box.setBorder(Theme.createFieldBorder(Theme.INPUT_BORDER));
     }
 
     private void updatePlanCalculations() {

@@ -8,6 +8,7 @@ import javax.swing.border.Border;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
+import javax.swing.plaf.basic.BasicComboBoxUI;
 import javax.swing.plaf.basic.BasicScrollBarUI;
 import java.awt.*;
 import java.awt.event.FocusAdapter;
@@ -45,7 +46,12 @@ public class Theme {
     public static final Font FONT_SMALL = new Font("Segoe UI", Font.PLAIN, 12);
 
     static {
+        applyGlobalTheme();
+    }
+
+    public static void applyGlobalTheme() {
         try {
+            // Dialogs & OptionPanes
             UIManager.put("OptionPane.background", CARD_BG);
             UIManager.put("Panel.background", CARD_BG);
             UIManager.put("OptionPane.messageForeground", TEXT_LIGHT);
@@ -53,7 +59,103 @@ public class Theme {
             UIManager.put("Button.background", ACCENT_SECONDARY);
             UIManager.put("Button.foreground", TEXT_LIGHT);
             UIManager.put("Button.font", FONT_BOLD);
+
+            // ComboBox Defaults
+            UIManager.put("ComboBox.background", INPUT_BG);
+            UIManager.put("ComboBox.foreground", TEXT_LIGHT);
+            UIManager.put("ComboBox.selectionBackground", ACCENT_PRIMARY);
+            UIManager.put("ComboBox.selectionForeground", Color.WHITE);
+            UIManager.put("ComboBox.buttonBackground", INPUT_BG);
+            UIManager.put("ComboBox.buttonDarkShadow", CARD_BORDER);
+            UIManager.put("ComboBox.buttonHighlight", INPUT_BORDER);
+            UIManager.put("ComboBox.buttonShadow", INPUT_BG);
+
+            // List Defaults (for Dropdown Popups)
+            UIManager.put("List.background", INPUT_BG);
+            UIManager.put("List.foreground", TEXT_LIGHT);
+            UIManager.put("List.selectionBackground", ACCENT_PRIMARY);
+            UIManager.put("List.selectionForeground", Color.WHITE);
+
+            // Tables
+            UIManager.put("Table.background", CARD_BG);
+            UIManager.put("Table.foreground", TEXT_LIGHT);
+            UIManager.put("Table.selectionBackground", ACCENT_PRIMARY);
+            UIManager.put("Table.selectionForeground", Color.WHITE);
+            UIManager.put("Table.gridColor", CARD_BORDER);
+
+            // Text Inputs
+            UIManager.put("TextField.background", INPUT_BG);
+            UIManager.put("TextField.foreground", TEXT_LIGHT);
+            UIManager.put("TextField.caretForeground", TEXT_LIGHT);
+            UIManager.put("TextField.selectionBackground", ACCENT_PRIMARY);
+            UIManager.put("TextField.selectionForeground", Color.WHITE);
+            UIManager.put("PasswordField.background", INPUT_BG);
+            UIManager.put("PasswordField.foreground", TEXT_LIGHT);
+            UIManager.put("PasswordField.caretForeground", TEXT_LIGHT);
+            UIManager.put("PasswordField.selectionBackground", ACCENT_PRIMARY);
+            UIManager.put("PasswordField.selectionForeground", Color.WHITE);
+
+            // ToolTips
+            UIManager.put("ToolTip.background", CARD_BG);
+            UIManager.put("ToolTip.foreground", TEXT_LIGHT);
+            UIManager.put("ToolTip.font", FONT_SMALL);
+            UIManager.put("ToolTip.border", createFieldBorder(CARD_BORDER));
+
+            // Scrollbars & Viewports
+            UIManager.put("Viewport.background", BG_DARK);
+            UIManager.put("ScrollPane.background", BG_DARK);
         } catch (Exception ignored) {}
+    }
+
+    /**
+     * Styles any JComboBox with dark background, crisp readable text, custom dropdown arrow,
+     * and high-contrast selection colors to completely prevent white-on-white text in Windows L&F.
+     */
+    public static <T> void styleComboBox(JComboBox<T> box) {
+        box.setBackground(INPUT_BG);
+        box.setForeground(TEXT_LIGHT);
+        box.setFont(FONT_BODY);
+        box.setPreferredSize(new Dimension(box.getPreferredSize().width, 42));
+        box.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+        box.setBorder(createFieldBorder(INPUT_BORDER));
+
+        // Custom styled arrow button matching dark input
+        box.setUI(new BasicComboBoxUI() {
+            @Override
+            protected JButton createArrowButton() {
+                JButton btn = new JButton("▼");
+                btn.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+                btn.setForeground(TEXT_MUTED);
+                btn.setBackground(INPUT_BG);
+                btn.setBorder(BorderFactory.createEmptyBorder(0, 4, 0, 10));
+                btn.setContentAreaFilled(false);
+                btn.setFocusPainted(false);
+                btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+                return btn;
+            }
+        });
+
+        // High contrast item renderer: ensures items are NEVER white text on white background
+        box.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                list.setBackground(INPUT_BG);
+                list.setSelectionBackground(ACCENT_PRIMARY);
+                list.setSelectionForeground(Color.WHITE);
+
+                if (isSelected) {
+                    setBackground(ACCENT_PRIMARY);
+                    setForeground(Color.WHITE);
+                } else {
+                    setBackground(INPUT_BG);
+                    setForeground(TEXT_LIGHT);
+                }
+                setFont(FONT_BODY);
+                setBorder(new EmptyBorder(8, 12, 8, 12));
+                return this;
+            }
+        });
     }
 
     public static JTextField createStyledTextField() {
