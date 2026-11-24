@@ -252,18 +252,18 @@ public class TrainerDashboard extends BaseDashboard {
 
         String[] bodyTypes = {"All Body Types", "Ectomorph", "Mesomorph", "Endomorph", "Universal"};
         traineeBodyTypeCombo = new JComboBox<>(bodyTypes);
-        styleComboBox(traineeBodyTypeCombo);
-        traineeBodyTypeCombo.setPreferredSize(new Dimension(150, 36));
+        Theme.styleComboBox(traineeBodyTypeCombo);
+        traineeBodyTypeCombo.setPreferredSize(new Dimension(160, 38));
         traineeBodyTypeCombo.addActionListener(e -> loadTraineeData());
 
         String[] sortOptions = {"Sort: Name (A-Z)", "Sort: Weight (High-Low)", "Sort: Body Type", "Sort: Attendance"};
         traineeSortCombo = new JComboBox<>(sortOptions);
-        styleComboBox(traineeSortCombo);
-        traineeSortCombo.setPreferredSize(new Dimension(170, 36));
+        Theme.styleComboBox(traineeSortCombo);
+        traineeSortCombo.setPreferredSize(new Dimension(185, 38));
         traineeSortCombo.addActionListener(e -> applyTraineeSorting());
 
         traineeSearchField = Theme.createStyledTextField();
-        traineeSearchField.setPreferredSize(new Dimension(180, 36));
+        traineeSearchField.setPreferredSize(new Dimension(190, 38));
         traineeSearchField.setToolTipText("Filter by Gym ID, Name, or Goal");
         traineeSearchField.addActionListener(e -> loadTraineeData());
 
@@ -279,7 +279,9 @@ public class TrainerDashboard extends BaseDashboard {
 
         // Syllabus Unit 6 (Lectures 49-54): CSV Export using Character Streams
         JButton exportCsvBtn = Theme.createSecondaryButton("Export CSV");
-        exportCsvBtn.setBackground(new Color(22, 101, 52)); // Subtle forest green
+        exportCsvBtn.setBackground(new Color(16, 185, 129)); // Vivid Emerald Green
+        exportCsvBtn.setForeground(Color.WHITE);
+        exportCsvBtn.setFont(Theme.FONT_BOLD);
         exportCsvBtn.addActionListener(e -> handleExportTraineesCSV());
 
         filterControls.add(traineeBodyTypeCombo);
@@ -304,19 +306,20 @@ public class TrainerDashboard extends BaseDashboard {
 
         traineeTable = new JTable(traineeTableModel);
         styleTable(traineeTable);
+        traineeTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 
-        traineeTable.getColumnModel().getColumn(0).setPreferredWidth(85);
-        traineeTable.getColumnModel().getColumn(1).setPreferredWidth(125);
-        traineeTable.getColumnModel().getColumn(2).setPreferredWidth(140);
-        traineeTable.getColumnModel().getColumn(3).setPreferredWidth(95);
-        traineeTable.getColumnModel().getColumn(4).setPreferredWidth(90);
-        traineeTable.getColumnModel().getColumn(5).setPreferredWidth(150);
-        traineeTable.getColumnModel().getColumn(6).setPreferredWidth(80);
-        traineeTable.getColumnModel().getColumn(7).setPreferredWidth(80);
-        traineeTable.getColumnModel().getColumn(8).setPreferredWidth(70);
-        traineeTable.getColumnModel().getColumn(9).setPreferredWidth(65);
-        traineeTable.getColumnModel().getColumn(10).setPreferredWidth(170);
-        traineeTable.getColumnModel().getColumn(11).setPreferredWidth(75);
+        traineeTable.getColumnModel().getColumn(0).setPreferredWidth(90);  // Gym ID
+        traineeTable.getColumnModel().getColumn(1).setPreferredWidth(160); // Member Name
+        traineeTable.getColumnModel().getColumn(2).setPreferredWidth(200); // Email
+        traineeTable.getColumnModel().getColumn(3).setPreferredWidth(110); // Phone
+        traineeTable.getColumnModel().getColumn(4).setPreferredWidth(105); // Body Type
+        traineeTable.getColumnModel().getColumn(5).setPreferredWidth(180); // Fitness Goal
+        traineeTable.getColumnModel().getColumn(6).setPreferredWidth(85);  // Current Wt
+        traineeTable.getColumnModel().getColumn(7).setPreferredWidth(85);  // Target Wt
+        traineeTable.getColumnModel().getColumn(8).setPreferredWidth(80);  // Height
+        traineeTable.getColumnModel().getColumn(9).setPreferredWidth(75);  // BMI
+        traineeTable.getColumnModel().getColumn(10).setPreferredWidth(220); // Assigned Diet Plan
+        traineeTable.getColumnModel().getColumn(11).setPreferredWidth(85);  // Status
 
         // Selection listener to populate assessment form
         traineeTable.getSelectionModel().addListSelectionListener(e -> {
@@ -362,9 +365,14 @@ public class TrainerDashboard extends BaseDashboard {
         headerBox.add(formSub);
         formCard.add(headerBox, BorderLayout.NORTH);
 
-        // Grid of inputs (3 columns)
-        JPanel grid = new JPanel(new GridLayout(3, 4, 14, 10));
-        grid.setOpaque(false);
+        // Form Center Container
+        JPanel formCenter = new JPanel();
+        formCenter.setLayout(new BoxLayout(formCenter, BoxLayout.Y_AXIS));
+        formCenter.setOpaque(false);
+
+        // Row 1 & 2: Primary Inputs in a clean 2x4 Grid
+        JPanel mainGrid = new JPanel(new GridLayout(2, 4, 14, 10));
+        mainGrid.setOpaque(false);
 
         formGymIdField = Theme.createStyledTextField();
         formGymIdField.setToolTipText("e.g. 20261001");
@@ -374,7 +382,7 @@ public class TrainerDashboard extends BaseDashboard {
 
         String[] types = {"Ectomorph", "Mesomorph", "Endomorph", "Universal"};
         formBodyTypeCombo = new JComboBox<>(types);
-        styleComboBox(formBodyTypeCombo);
+        Theme.styleComboBox(formBodyTypeCombo);
 
         formGoalField = Theme.createStyledTextField();
         formGoalField.setText("Hypertrophy / Bulk");
@@ -388,40 +396,75 @@ public class TrainerDashboard extends BaseDashboard {
         formHeightField.setText("175.0");
 
         formDietPlanCombo = new JComboBox<>();
-        styleComboBox(formDietPlanCombo);
+        Theme.styleComboBox(formDietPlanCombo);
         refreshDietPlanComboOptions();
 
+        // Add 8 primary inputs
+        addFormGridField(mainGrid, "Gym ID / Roll No:", formGymIdField);
+        addFormGridField(mainGrid, "Full Name:", formNameField);
+        addFormGridField(mainGrid, "Email Address:", formEmailField);
+        addFormGridField(mainGrid, "Phone Number:", formPhoneField);
+
+        addFormGridField(mainGrid, "Body Type (Metabolism):", formBodyTypeCombo);
+        addFormGridField(mainGrid, "Fitness Goal:", formGoalField);
+        addFormGridField(mainGrid, "Current Weight (kg):", formCurrentWeightField);
+        addFormGridField(mainGrid, "Target Goal Weight (kg):", formTargetWeightField);
+
+        formCenter.add(mainGrid);
+        formCenter.add(Box.createVerticalStrut(10));
+
+        // Bottom Ergonomic Row: Height (160px), Assign Diet Plan (260px), Notes (Expanding), BMI Badge (240px)
+        JPanel bottomRow = new JPanel(new BorderLayout(14, 0));
+        bottomRow.setOpaque(false);
+
+        JPanel leftBottom = new JPanel(new GridLayout(1, 2, 14, 0));
+        leftBottom.setOpaque(false);
+        leftBottom.setPreferredSize(new Dimension(460, 68));
+        addFormGridField(leftBottom, "Height (cm):", formHeightField);
+        addFormGridField(leftBottom, "Assign Diet Plan:", formDietPlanCombo);
+
+        // Coaching notes area with generous height and clear border
         formNotesArea = new JTextArea(2, 20);
         formNotesArea.setBackground(Theme.INPUT_BG);
         formNotesArea.setForeground(Theme.TEXT_LIGHT);
         formNotesArea.setFont(Theme.FONT_BODY);
-        formNotesArea.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
+        formNotesArea.setCaretColor(Theme.TEXT_LIGHT);
         formNotesArea.setLineWrap(true);
         formNotesArea.setWrapStyleWord(true);
+        formNotesArea.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
         JScrollPane notesScroll = Theme.createModernScrollPane(formNotesArea);
         notesScroll.setPreferredSize(new Dimension(notesScroll.getPreferredSize().width, 42));
+        notesScroll.setBorder(Theme.createFieldBorder(Theme.INPUT_BORDER));
 
+        JPanel notesPanel = new JPanel(new BorderLayout(0, 4));
+        notesPanel.setOpaque(false);
+        notesPanel.add(Theme.createFieldLabel("Trainer Coaching Notes:"), BorderLayout.NORTH);
+        notesPanel.add(notesScroll, BorderLayout.CENTER);
+
+        // High-contrast BMI Status Badge Card
+        JPanel bmiCard = new JPanel(new BorderLayout(0, 4));
+        bmiCard.setOpaque(false);
+        bmiCard.setPreferredSize(new Dimension(240, 68));
+        bmiCard.add(Theme.createFieldLabel("Calculated BMI & Status:"), BorderLayout.NORTH);
+
+        JPanel bmiBadge = new JPanel(new BorderLayout());
+        bmiBadge.setBackground(Theme.INPUT_BG);
+        bmiBadge.setBorder(BorderFactory.createCompoundBorder(
+                Theme.createFieldBorder(Theme.INPUT_BORDER),
+                new EmptyBorder(8, 12, 8, 12)
+        ));
         formBmiPreviewLabel = new JLabel("BMI: 22.9 (Normal / Athletic)");
         formBmiPreviewLabel.setFont(Theme.FONT_BOLD);
         formBmiPreviewLabel.setForeground(Theme.SUCCESS_COLOR);
+        bmiBadge.add(formBmiPreviewLabel, BorderLayout.CENTER);
+        bmiCard.add(bmiBadge, BorderLayout.CENTER);
 
-        // Add to grid
-        addFormGridField(grid, "Gym ID / Roll No:", formGymIdField);
-        addFormGridField(grid, "Full Name:", formNameField);
-        addFormGridField(grid, "Email Address:", formEmailField);
-        addFormGridField(grid, "Phone Number:", formPhoneField);
+        bottomRow.add(leftBottom, BorderLayout.WEST);
+        bottomRow.add(notesPanel, BorderLayout.CENTER);
+        bottomRow.add(bmiCard, BorderLayout.EAST);
 
-        addFormGridField(grid, "Body Type (Metabolism):", formBodyTypeCombo);
-        addFormGridField(grid, "Fitness Goal:", formGoalField);
-        addFormGridField(grid, "Current Weight (kg):", formCurrentWeightField);
-        addFormGridField(grid, "Target Goal Weight (kg):", formTargetWeightField);
-
-        addFormGridField(grid, "Height (cm):", formHeightField);
-        addFormGridField(grid, "Assign Diet Plan:", formDietPlanCombo);
-        addFormGridField(grid, "Trainer Coaching Notes:", notesScroll);
-        addFormGridField(grid, "Calculated BMI & Status:", formBmiPreviewLabel);
-
-        formCard.add(grid, BorderLayout.CENTER);
+        formCenter.add(bottomRow);
+        formCard.add(formCenter, BorderLayout.CENTER);
 
         // Bottom Actions
         JPanel bottomActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
@@ -698,12 +741,12 @@ public class TrainerDashboard extends BaseDashboard {
 
         String[] types = {"All Body Types", "Ectomorph", "Mesomorph", "Endomorph", "Universal"};
         dietBodyTypeFilterCombo = new JComboBox<>(types);
-        styleComboBox(dietBodyTypeFilterCombo);
-        dietBodyTypeFilterCombo.setPreferredSize(new Dimension(140, 36));
+        Theme.styleComboBox(dietBodyTypeFilterCombo);
+        dietBodyTypeFilterCombo.setPreferredSize(new Dimension(150, 38));
         dietBodyTypeFilterCombo.addActionListener(e -> loadDietPlanData());
 
         dietSearchField = Theme.createStyledTextField();
-        dietSearchField.setPreferredSize(new Dimension(140, 36));
+        dietSearchField.setPreferredSize(new Dimension(160, 38));
         dietSearchField.setToolTipText("Search by plan name or goal");
         dietSearchField.addActionListener(e -> loadDietPlanData());
 
@@ -728,11 +771,11 @@ public class TrainerDashboard extends BaseDashboard {
         dietPlanTable = new JTable(dietPlanTableModel);
         styleTable(dietPlanTable);
 
-        dietPlanTable.getColumnModel().getColumn(0).setPreferredWidth(160);
-        dietPlanTable.getColumnModel().getColumn(1).setPreferredWidth(90);
-        dietPlanTable.getColumnModel().getColumn(2).setPreferredWidth(130);
-        dietPlanTable.getColumnModel().getColumn(3).setPreferredWidth(75);
-        dietPlanTable.getColumnModel().getColumn(4).setPreferredWidth(120);
+        dietPlanTable.getColumnModel().getColumn(0).setPreferredWidth(200); // Plan Name
+        dietPlanTable.getColumnModel().getColumn(1).setPreferredWidth(105); // Body Type
+        dietPlanTable.getColumnModel().getColumn(2).setPreferredWidth(150); // Fitness Goal
+        dietPlanTable.getColumnModel().getColumn(3).setPreferredWidth(85);  // Calories
+        dietPlanTable.getColumnModel().getColumn(4).setPreferredWidth(160); // Macros (P/C/F)
 
         dietPlanTable.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
@@ -858,41 +901,44 @@ public class TrainerDashboard extends BaseDashboard {
     private JPanel createMiniMacroCard(String title, JLabel valueLabel, Color accentColor) {
         JPanel p = new JPanel();
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
-        p.setBackground(Theme.INPUT_BG);
+        p.setBackground(new Color(26, 32, 44));
         p.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(Theme.INPUT_BORDER, 1, true),
-                new EmptyBorder(6, 10, 6, 10)
+                new LineBorder(new Color(59, 66, 82), 1, true),
+                new EmptyBorder(8, 12, 8, 12)
         ));
 
         JLabel titleLbl = new JLabel(title);
-        titleLbl.setFont(new Font("Segoe UI", Font.BOLD, 10));
-        titleLbl.setForeground(Theme.TEXT_MUTED);
+        titleLbl.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        titleLbl.setForeground(new Color(203, 213, 225));
 
-        valueLabel.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        valueLabel.setFont(new Font("Segoe UI", Font.BOLD, 17));
         valueLabel.setForeground(accentColor);
 
         p.add(titleLbl);
-        p.add(Box.createVerticalStrut(2));
+        p.add(Box.createVerticalStrut(3));
         p.add(valueLabel);
         return p;
     }
 
     private JTextArea createMealTextArea() {
-        JTextArea area = new JTextArea(2, 30);
+        JTextArea area = new JTextArea(3, 30);
         area.setBackground(Theme.INPUT_BG);
         area.setForeground(Theme.TEXT_LIGHT);
         area.setFont(Theme.FONT_BODY);
         area.setEditable(false);
         area.setLineWrap(true);
         area.setWrapStyleWord(true);
-        area.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
+        area.setBorder(BorderFactory.createCompoundBorder(
+                Theme.createFieldBorder(Theme.INPUT_BORDER),
+                BorderFactory.createEmptyBorder(6, 10, 6, 10)
+        ));
         return area;
     }
 
     private void addMealRow(JPanel parent, String title, JTextArea textArea) {
         JPanel row = new JPanel(new BorderLayout(0, 4));
         row.setOpaque(false);
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 75));
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 110));
 
         JLabel lbl = new JLabel("• " + title);
         lbl.setFont(Theme.FONT_BOLD);
@@ -902,7 +948,7 @@ public class TrainerDashboard extends BaseDashboard {
         row.add(textArea, BorderLayout.CENTER);
 
         parent.add(row);
-        parent.add(Box.createVerticalStrut(8));
+        parent.add(Box.createVerticalStrut(10));
     }
 
     private void loadDietPlanData() {
@@ -998,15 +1044,77 @@ public class TrainerDashboard extends BaseDashboard {
                 .toArray(String[]::new);
 
         JComboBox<String> combo = new JComboBox<>(traineeNames);
-        styleComboBox(combo);
+        Theme.styleComboBox(combo);
+        combo.setPreferredSize(new Dimension(380, 42));
 
-        JPanel panel = new JPanel(new GridLayout(2, 1, 6, 6));
-        panel.setBackground(Theme.CARD_BG);
-        panel.add(Theme.createFieldLabel("Select Trainee to assign '" + currentSelectedPlan.getPlanName() + "':"));
-        panel.add(combo);
+        // Create high-contrast themed modal dialog
+        JDialog dlg = new JDialog(SwingUtilities.getWindowAncestor(this), "Assign Diet Plan", Dialog.ModalityType.APPLICATION_MODAL);
+        dlg.setUndecorated(true);
+        dlg.setBackground(new Color(0, 0, 0, 0));
 
-        int res = JOptionPane.showConfirmDialog(this, panel, "Assign Diet Plan to Trainee", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (res == JOptionPane.OK_OPTION) {
+        JPanel card = new JPanel(new BorderLayout(0, 16)) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(Theme.CARD_BG);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 16, 16);
+                g2.setColor(Theme.CARD_BORDER);
+                g2.setStroke(new BasicStroke(1.5f));
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 16, 16);
+                g2.dispose();
+            }
+        };
+        card.setOpaque(false);
+        card.setBorder(new EmptyBorder(24, 24, 24, 24));
+
+        JLabel titleLbl = new JLabel("Assign Diet Plan to Trainee");
+        titleLbl.setFont(Theme.FONT_TITLE);
+        titleLbl.setForeground(Theme.TEXT_LIGHT);
+
+        JLabel subLbl = new JLabel("Assign '" + currentSelectedPlan.getPlanName() + "' (" + currentSelectedPlan.getBodyType() + ") to client:");
+        subLbl.setFont(Theme.FONT_SUBTITLE);
+        subLbl.setForeground(Theme.ROLE_MEMBER_COLOR);
+
+        JPanel header = new JPanel();
+        header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
+        header.setOpaque(false);
+        header.add(titleLbl);
+        header.add(Box.createVerticalStrut(4));
+        header.add(subLbl);
+        card.add(header, BorderLayout.NORTH);
+
+        JPanel body = new JPanel(new BorderLayout(0, 8));
+        body.setOpaque(false);
+        body.add(Theme.createFieldLabel("Select Trainee from Roster:"), BorderLayout.NORTH);
+        body.add(combo, BorderLayout.CENTER);
+        card.add(body, BorderLayout.CENTER);
+
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
+        btnPanel.setOpaque(false);
+
+        JButton cancelBtn = Theme.createSecondaryButton("Cancel");
+        cancelBtn.setPreferredSize(new Dimension(110, 40));
+        cancelBtn.addActionListener(e -> dlg.dispose());
+
+        final boolean[] confirmed = {false};
+        JButton confirmBtn = Theme.createPrimaryButton("Assign Plan");
+        confirmBtn.setPreferredSize(new Dimension(130, 40));
+        confirmBtn.addActionListener(e -> {
+            confirmed[0] = true;
+            dlg.dispose();
+        });
+
+        btnPanel.add(cancelBtn);
+        btnPanel.add(confirmBtn);
+        card.add(btnPanel, BorderLayout.SOUTH);
+
+        dlg.setContentPane(card);
+        dlg.pack();
+        dlg.setLocationRelativeTo(this);
+        dlg.setVisible(true);
+
+        if (confirmed[0]) {
             int idx = combo.getSelectedIndex();
             if (idx >= 0 && idx < trainees.size()) {
                 Trainee target = trainees.get(idx);
@@ -1097,15 +1205,6 @@ public class TrainerDashboard extends BaseDashboard {
     private JPanel createMetricCard(String title, String defaultValue, String subtitle, Color accentColor, JLabel valueLabel) {
         JLabel subLbl = new JLabel(subtitle);
         return createMetricCard(title, defaultValue, subtitle, accentColor, valueLabel, subLbl);
-    }
-
-    private void styleComboBox(JComboBox<?> box) {
-        box.setBackground(Theme.INPUT_BG);
-        box.setForeground(Theme.TEXT_LIGHT);
-        box.setFont(Theme.FONT_BODY);
-        box.setPreferredSize(new Dimension(box.getPreferredSize().width, 38));
-        box.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
-        box.setBorder(Theme.createFieldBorder(Theme.INPUT_BORDER));
     }
 
     @Override
