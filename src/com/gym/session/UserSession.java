@@ -16,9 +16,15 @@ public class UserSession {
     private static LocalDate membershipStartDate;
     private static LocalDate renewalDueDate;
     private static int membershipDurationDays;
+    private static String assignedTrainer;
 
     public static void setCurrentUser(User user) {
         currentUser = user;
+        if (user != null) {
+            assignedTrainer = user.getAssignedTrainer();
+        } else {
+            assignedTrainer = null;
+        }
     }
 
     public static User getCurrentUser() {
@@ -98,6 +104,14 @@ public class UserSession {
         return membershipPlan != null;
     }
 
+    public static String getAssignedTrainer() {
+        return assignedTrainer;
+    }
+
+    public static void setAssignedTrainer(String trainer) {
+        assignedTrainer = trainer;
+    }
+
     public static void logout() {
         currentUser = null;
         membershipPlan = null;
@@ -105,5 +119,6 @@ public class UserSession {
         membershipStartDate = null;
         renewalDueDate = null;
         membershipDurationDays = 0;
+        assignedTrainer = null;
     }
 }

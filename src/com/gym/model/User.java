@@ -19,6 +19,7 @@ public class User {
     private java.time.LocalDate membershipStartDate;
     private java.time.LocalDate membershipEndDate;
     private Integer membershipDurationDays;
+    private String assignedTrainer;
 
     public User() {}
 
@@ -143,5 +144,13 @@ public class User {
 
     public void setMembershipDurationDays(Integer membershipDurationDays) {
         this.membershipDurationDays = membershipDurationDays;
+    }
+
+    public String getAssignedTrainer() {
+        return assignedTrainer;
+    }
+
+    public void setAssignedTrainer(String assignedTrainer) {
+        this.assignedTrainer = assignedTrainer;
     }
 }

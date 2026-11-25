@@ -59,7 +59,10 @@ public class ChooseMembershipPanel extends JPanel {
     private final List<PlanOption> plans = new ArrayList<>();
     private final List<PlanCardComponent> cardComponents = new ArrayList<>();
     private PlanOption selectedPlan = null;
+    private boolean canReturnToDashboard = false;
 
+    private JPanel topBar;
+    private JButton closeButton;
     private JLabel messageLabel;
     private JButton confirmButton;
     private JButton signOutButton;
@@ -164,9 +167,56 @@ public class ChooseMembershipPanel extends JPanel {
         };
         box.setOpaque(false);
         box.setLayout(new BoxLayout(box, BoxLayout.Y_AXIS));
-        box.setBorder(new EmptyBorder(28, 32, 28, 32));
-        box.setMaximumSize(new Dimension(1060, 680));
-        box.setPreferredSize(new Dimension(1040, 640));
+        box.setBorder(new EmptyBorder(22, 32, 28, 32));
+        box.setMaximumSize(new Dimension(1060, 700));
+        box.setPreferredSize(new Dimension(1040, 660));
+
+        // Top Action Bar with Cross (Close) Button on the right
+        topBar = new JPanel(new BorderLayout());
+        topBar.setOpaque(false);
+        topBar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        topBar.setAlignmentX(Component.CENTER_ALIGNMENT);
+        topBar.setBorder(new EmptyBorder(0, 0, 8, 0));
+        topBar.setVisible(false);
+
+        closeButton = new JButton("✕") {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (getModel().isPressed()) {
+                    g2.setColor(Theme.ACCENT_HOVER);
+                } else if (getModel().isRollover()) {
+                    g2.setColor(new Color(240, 84, 84, 50));
+                } else {
+                    g2.setColor(Theme.ACCENT_SECONDARY);
+                }
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+                if (getModel().isRollover()) {
+                    g2.setColor(Theme.ACCENT_PRIMARY);
+                } else {
+                    g2.setColor(Theme.CARD_BORDER);
+                }
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        closeButton.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        closeButton.setForeground(Theme.TEXT_LIGHT);
+        closeButton.setFocusPainted(false);
+        closeButton.setBorderPainted(false);
+        closeButton.setContentAreaFilled(false);
+        closeButton.setOpaque(false);
+        closeButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        closeButton.setPreferredSize(new Dimension(34, 34));
+        closeButton.setToolTipText("Cancel & Return to Member Workspace");
+        closeButton.addActionListener(e -> mainFrame.showCard(MainFrame.CARD_MEMBER));
+
+        JPanel rightContainer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        rightContainer.setOpaque(false);
+        rightContainer.add(closeButton);
+        topBar.add(rightContainer, BorderLayout.EAST);
 
         // Header Section
         JPanel headerPanel = new JPanel();
@@ -228,6 +278,7 @@ public class ChooseMembershipPanel extends JPanel {
         signOutButton.setPreferredSize(new Dimension(130, 44));
         signOutButton.addActionListener(e -> {
             UserSession.logout();
+            setCanReturnToDashboard(false);
             resetSelection();
             mainFrame.showCard(MainFrame.CARD_LOGIN);
         });
@@ -236,8 +287,9 @@ public class ChooseMembershipPanel extends JPanel {
         buttonRow.add(signOutButton);
 
         // Assemble Box
+        box.add(topBar);
         box.add(headerPanel);
-        box.add(Box.createVerticalStrut(20));
+        box.add(Box.createVerticalStrut(16));
         box.add(plansRow);
         box.add(Box.createVerticalStrut(18));
         box.add(messageLabel);
@@ -270,6 +322,16 @@ public class ChooseMembershipPanel extends JPanel {
 
         for (PlanCardComponent card : cardComponents) {
             card.repaint();
+        }
+    }
+
+    public void setCanReturnToDashboard(boolean allowed) {
+        this.canReturnToDashboard = allowed;
+        if (topBar != null && closeButton != null) {
+            topBar.setVisible(allowed);
+            closeButton.setVisible(allowed);
+            revalidate();
+            repaint();
         }
     }
 
@@ -311,6 +373,9 @@ public class ChooseMembershipPanel extends JPanel {
         // Asynchronously record membership and fee payment in database
         if (currentUser != null) {
             final PlanOption plan = selectedPlan;
+            confirmButton.setEnabled(false);
+            confirmButton.setText("Activating Membership...");
+
             SwingWorker<Void, Void> worker = new SwingWorker<>() {
                 @Override
                 protected Void doInBackground() {
@@ -344,12 +409,20 @@ public class ChooseMembershipPanel extends JPanel {
                     }
                     return null;
                 }
+
+                @Override
+                protected void done() {
+                    confirmButton.setEnabled(true);
+                    confirmButton.setText("Confirm " + plan.getTitle());
+                    // Transition to Member Workspace after database write completes
+                    mainFrame.openMemberDashboard(plan.getTitle(), plan.getPrice(), plan.getDurationDays());
+                }
             };
             worker.execute();
+        } else {
+            // Transition to Member Workspace
+            mainFrame.openMemberDashboard(selectedPlan.getTitle(), selectedPlan.getPrice(), selectedPlan.getDurationDays());
         }
-
-        // Transition to Member Workspace
-        mainFrame.openMemberDashboard(selectedPlan.getTitle(), selectedPlan.getPrice(), selectedPlan.getDurationDays());
     }
 
     /**

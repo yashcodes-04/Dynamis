@@ -134,6 +134,7 @@ public class DBConnection {
                 + "phone VARCHAR(20),"
                 + "password_hash VARCHAR(255) NOT NULL,"
                 + "role ENUM('MEMBER', 'RECEPTIONIST', 'TRAINER', 'OWNER') NOT NULL,"
+                + "assigned_trainer VARCHAR(100) DEFAULT NULL,"
                 + "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
                 + ");";
 
@@ -202,6 +203,18 @@ public class DBConnection {
                 }
             } catch (Exception ex) {
                 System.err.println("Note on users membership columns migration: " + ex.getMessage());
+            }
+
+            // Add assigned_trainer column to users if not present
+            try {
+                java.sql.DatabaseMetaData meta = conn.getMetaData();
+                try (ResultSet rs = meta.getColumns(null, null, "users", "assigned_trainer")) {
+                    if (!rs.next()) {
+                        stmt.execute("ALTER TABLE users ADD COLUMN assigned_trainer VARCHAR(100) DEFAULT NULL");
+                    }
+                }
+            } catch (Exception ex) {
+                System.err.println("Note on users assigned_trainer migration: " + ex.getMessage());
             }
 
             stmt.execute(createFeePaymentsSQL);

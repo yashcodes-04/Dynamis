@@ -247,6 +247,10 @@ public class RegisterPanel extends JPanel {
                         errorMessage = "This email is already registered.";
                         return false;
                     }
+                    if (!phone.isEmpty() && userDAO.isPhoneTaken(phone)) {
+                        errorMessage = "This phone number is already registered.";
+                        return false;
+                    }
                     return userDAO.register(fullName, email, phone, password, selectedRole);
                 } catch (Exception ex) {
                     errorMessage = "Database Error: " + ex.getMessage();

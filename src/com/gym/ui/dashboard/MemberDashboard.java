@@ -36,6 +36,8 @@ public class MemberDashboard extends BaseDashboard {
     private JLabel membershipDaysSub;
     private JLabel attendanceVal;
     private JLabel attendanceSub;
+    private JLabel assignedTrainerVal;
+    private JLabel assignedTrainerSub;
     private JLabel nextClassVal;
     private JLabel nextClassSub;
 
@@ -46,6 +48,8 @@ public class MemberDashboard extends BaseDashboard {
     private JPanel bookedCardContainer;
     private JButton cancelBookingBtn;
 
+    private DefaultTableModel scheduleModel;
+    private JLabel trainerNote;
     private JLabel summaryMembershipExpiry;
     private JLabel summaryBookedCount;
     private JLabel summaryTotalSpend;
@@ -79,7 +83,9 @@ public class MemberDashboard extends BaseDashboard {
         attendanceSub = new JLabel("Verified Check-ins");
         metricsPanel.add(createMetricCard("WORKOUT ATTENDANCE", "0 Days", "Verified Check-ins", Theme.SUCCESS_COLOR, attendanceVal, attendanceSub));
 
-        metricsPanel.add(createMetricCard("ASSIGNED TRAINER", "Alex Rivera", "Personal Training - Tier 1", Theme.ROLE_TRAINER_COLOR));
+        assignedTrainerVal = new JLabel("Alex Rivera");
+        assignedTrainerSub = new JLabel("Personal Training - Tier 1");
+        metricsPanel.add(createMetricCard("ASSIGNED TRAINER", "Alex Rivera", "Personal Training - Tier 1", Theme.ROLE_TRAINER_COLOR, assignedTrainerVal, assignedTrainerSub));
 
         nextClassVal = new JLabel("No Bookings");
         nextClassSub = new JLabel("Book a class to start");
@@ -110,27 +116,21 @@ public class MemberDashboard extends BaseDashboard {
         scheduleCard.add(schedTitle, BorderLayout.NORTH);
 
         String[] cols = {"Day", "Workout Target", "Trainer", "Time Slot"};
-        Object[][] data = {
-                {"Monday", "Chest & Triceps", "Alex Rivera", "07:00 AM"},
-                {"Tuesday", "Back & Biceps", "Alex Rivera", "07:00 AM"},
-                {"Wednesday", "Active Recovery / Yoga", "Elena Gomez", "08:00 AM"},
-                {"Thursday", "Legs & Core Strength", "Alex Rivera", "07:00 AM"},
-                {"Friday", "High Intensity Circuit", "Self Directed", "06:30 PM"},
-                {"Saturday", "Cardio & Stretching", "Elena Gomez", "09:00 AM"}
-        };
-        DefaultTableModel scheduleModel = new DefaultTableModel(data, cols) {
+        scheduleModel = new DefaultTableModel(cols, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
+        updateWorkoutSchedule(UserSession.getAssignedTrainer());
+
         JTable table = new JTable(scheduleModel);
         styleTable(table);
 
         // Ample column widths so Workout Target and Trainer names do not truncate with (...)
         table.getColumnModel().getColumn(0).setPreferredWidth(95);  // Day
         table.getColumnModel().getColumn(1).setPreferredWidth(210); // Workout Target
-        table.getColumnModel().getColumn(2).setPreferredWidth(130); // Trainer
+        table.getColumnModel().getColumn(2).setPreferredWidth(140); // Trainer
         table.getColumnModel().getColumn(3).setPreferredWidth(95);  // Time Slot
 
         JScrollPane scrollPane = Theme.createModernScrollPane(table);
@@ -218,7 +218,7 @@ public class MemberDashboard extends BaseDashboard {
         emptyPanel.add(emptySub);
 
         // Table view
-        String[] bookedCols = {"Class", "Duration", "Price / Session", "Schedule Slot", "Status"};
+        String[] bookedCols = {"Class", "Duration", "Schedule Slot", "Status"};
         bookedTableModel = new DefaultTableModel(bookedCols, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -234,13 +234,18 @@ public class MemberDashboard extends BaseDashboard {
             cancelBookingBtn.setEnabled(bookedTable.getSelectedRow() >= 0);
         });
 
-        // Custom highlight for Status column
-        bookedTable.getColumnModel().getColumn(4).setCellRenderer(new DefaultTableCellRenderer() {
+        // Custom highlight for Status column (column index 3)
+        bookedTable.getColumnModel().getColumn(3).setCellRenderer(new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable tbl, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
                 Component c = super.getTableCellRendererComponent(tbl, value, isSelected, false, row, column);
                 c.setFont(Theme.FONT_BOLD);
-                c.setForeground(Theme.SUCCESS_COLOR);
+                String valStr = value != null ? value.toString() : "";
+                if (valStr.toUpperCase().contains("EXPIRED")) {
+                    c.setForeground(Theme.ERROR_COLOR);
+                } else {
+                    c.setForeground(Theme.SUCCESS_COLOR);
+                }
                 if (!isSelected) {
                     c.setBackground(row % 2 == 0 ? Theme.CARD_BG : new Color(30, 34, 46));
                 }
@@ -250,12 +255,11 @@ public class MemberDashboard extends BaseDashboard {
             }
         });
 
-        // Ample column widths so Class names and Schedule slots never truncate with (...)
+        // Column widths for 4 columns
         bookedTable.getColumnModel().getColumn(0).setPreferredWidth(210); // Class
-        bookedTable.getColumnModel().getColumn(1).setPreferredWidth(90);  // Duration
-        bookedTable.getColumnModel().getColumn(2).setPreferredWidth(115); // Price / Session
-        bookedTable.getColumnModel().getColumn(3).setPreferredWidth(190); // Schedule Slot
-        bookedTable.getColumnModel().getColumn(4).setPreferredWidth(105); // Status
+        bookedTable.getColumnModel().getColumn(1).setPreferredWidth(95);  // Duration
+        bookedTable.getColumnModel().getColumn(2).setPreferredWidth(190); // Schedule Slot
+        bookedTable.getColumnModel().getColumn(3).setPreferredWidth(160); // Status (e.g. CONFIRMED (28d left))
 
         JScrollPane bookedScrollPane = Theme.createModernScrollPane(bookedTable);
         bookedScrollPane.setBorder(BorderFactory.createEmptyBorder());
@@ -295,7 +299,7 @@ public class MemberDashboard extends BaseDashboard {
 
         JButton renewBtn = Theme.createSecondaryButton("Renew / Upgrade Membership");
         renewBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
-        renewBtn.addActionListener(e -> mainFrame.showChooseMembership());
+        renewBtn.addActionListener(e -> mainFrame.showChooseMembership(true));
 
         actionCard.add(actionTitle);
         actionCard.add(Box.createVerticalStrut(18));
@@ -332,7 +336,7 @@ public class MemberDashboard extends BaseDashboard {
         summaryNextSession.setFont(Theme.FONT_BODY);
         summaryNextSession.setForeground(Theme.TEXT_MUTED);
 
-        JLabel trainerNote = new JLabel("• Trainer Guidance: Available on gym floor");
+        trainerNote = new JLabel("• Trainer Guidance: Available on gym floor");
         trainerNote.setFont(Theme.FONT_BODY);
         trainerNote.setForeground(Theme.TEXT_MUTED);
 
@@ -387,12 +391,14 @@ public class MemberDashboard extends BaseDashboard {
             double total = 0.0;
             for (BookedSession b : currentBookings) {
                 total += b.getPrice();
+                String statusDisplay = b.isExpired()
+                        ? "EXPIRED"
+                        : "CONFIRMED (" + b.getDaysRemaining() + "d left)";
                 bookedTableModel.addRow(new Object[]{
                         b.getClassName(),
                         b.getDuration(),
-                        "Rs. " + String.format("%,.0f", b.getPrice()),
                         b.getScheduleSlot(),
-                        b.getStatus()
+                        statusDisplay
                 });
             }
 
@@ -519,6 +525,56 @@ public class MemberDashboard extends BaseDashboard {
         }
     }
 
+    public void updateWorkoutSchedule(String trainerName) {
+        if (scheduleModel == null) return;
+        boolean hasRealTrainer = (trainerName != null && !trainerName.trim().isEmpty());
+        String displayTrainer = hasRealTrainer ? trainerName.trim() : "Alex Rivera";
+        String secondaryTrainer = hasRealTrainer ? trainerName.trim() : "Elena Gomez";
+
+        scheduleModel.setRowCount(0);
+        scheduleModel.addRow(new Object[]{"Monday", "Chest & Triceps", displayTrainer, "07:00 AM"});
+        scheduleModel.addRow(new Object[]{"Tuesday", "Back & Biceps", displayTrainer, "07:00 AM"});
+        scheduleModel.addRow(new Object[]{"Wednesday", "Active Recovery / Yoga", secondaryTrainer, "08:00 AM"});
+        scheduleModel.addRow(new Object[]{"Thursday", "Legs & Core Strength", displayTrainer, "07:00 AM"});
+        scheduleModel.addRow(new Object[]{"Friday", "High Intensity Circuit", "Self Directed", "06:30 PM"});
+        scheduleModel.addRow(new Object[]{"Saturday", "Cardio & Stretching", secondaryTrainer, "09:00 AM"});
+    }
+
+    public void updateTrainerDisplay() {
+        String trainer = UserSession.getAssignedTrainer();
+        boolean hasRealTrainer = (trainer != null && !trainer.trim().isEmpty());
+
+        updateWorkoutSchedule(trainer);
+
+        if (hasRealTrainer) {
+            if (assignedTrainerVal != null) {
+                assignedTrainerVal.setText(trainer);
+                assignedTrainerVal.setForeground(Theme.TEXT_LIGHT);
+            }
+            if (assignedTrainerSub != null) {
+                assignedTrainerSub.setText("Certified Personal Trainer");
+                assignedTrainerSub.setForeground(Theme.ROLE_TRAINER_COLOR);
+            }
+            if (trainerNote != null) {
+                trainerNote.setText("• Assigned Trainer: " + trainer + " (Active Guidance)");
+                trainerNote.setForeground(Theme.ROLE_TRAINER_COLOR);
+            }
+        } else {
+            if (assignedTrainerVal != null) {
+                assignedTrainerVal.setText("Alex Rivera");
+                assignedTrainerVal.setForeground(Theme.TEXT_LIGHT);
+            }
+            if (assignedTrainerSub != null) {
+                assignedTrainerSub.setText("Personal Training - Tier 1");
+                assignedTrainerSub.setForeground(Theme.TEXT_MUTED);
+            }
+            if (trainerNote != null) {
+                trainerNote.setText("• Trainer Guidance: Available on gym floor (Demo)");
+                trainerNote.setForeground(Theme.TEXT_MUTED);
+            }
+        }
+    }
+
     @Override
     public void refreshUserInfo() {
         super.refreshUserInfo();
@@ -532,6 +588,7 @@ public class MemberDashboard extends BaseDashboard {
         User user = UserSession.getCurrentUser();
         if (user == null) {
             updateMembershipDisplay();
+            updateTrainerDisplay();
             loadBookedSessions();
             return;
         }
@@ -539,6 +596,7 @@ public class MemberDashboard extends BaseDashboard {
         // Sync membership from database
         UserDAO userDAO = new UserDAO();
         userDAO.syncUserMembership(user);
+        userDAO.syncUserTrainer(user);
 
         SwingWorker<Void, Void> worker = new SwingWorker<>() {
             private FeePayment latestPayment = null;
@@ -576,6 +634,7 @@ public class MemberDashboard extends BaseDashboard {
                 }
 
                 updateMembershipDisplay();
+                updateTrainerDisplay();
                 loadBookedSessions();
             }
         };

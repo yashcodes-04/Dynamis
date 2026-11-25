@@ -35,6 +35,68 @@ public class UserDAO {
         return false;
     }
 
+    public boolean isPhoneTaken(String phone) throws SQLException {
+        if (phone == null || phone.trim().isEmpty()) return false;
+        String query = "SELECT COUNT(*) FROM users WHERE phone = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(query)) {
+            ps.setString(1, phone.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Retrieves any one registered trainer from the database (random or first).
+     * Returns null if no trainer is registered in the system yet.
+     */
+    public String getRandomTrainerName() {
+        String query = "SELECT full_name FROM users WHERE role = 'TRAINER' ORDER BY RAND() LIMIT 1";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(query);
+             ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                String name = rs.getString("full_name");
+                if (name != null && !name.trim().isEmpty()) {
+                    return name.trim();
+                }
+            }
+        } catch (Exception ex) {
+            System.err.println("Note reading registered trainers: " + ex.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * When a new trainer registers, assigns them to any existing members who do NOT have an assigned trainer yet.
+     * Members who already have a real trainer assigned are left unchanged.
+     */
+    public void assignTrainerToUnassignedMembers(String trainerName) {
+        if (trainerName == null || trainerName.trim().isEmpty()) return;
+        try (Connection conn = DBConnection.getConnection()) {
+            String updateUsers = "UPDATE users SET assigned_trainer = ? WHERE role = 'MEMBER' AND (assigned_trainer IS NULL OR assigned_trainer = '')";
+            try (PreparedStatement ps = conn.prepareStatement(updateUsers)) {
+                ps.setString(1, trainerName.trim());
+                int updated = ps.executeUpdate();
+                if (updated > 0) {
+                    System.out.println("Assigned registered trainer '" + trainerName + "' to " + updated + " member(s).");
+                }
+            }
+
+            String updateTrainees = "UPDATE trainees SET assigned_trainer = ? WHERE assigned_trainer IS NULL OR assigned_trainer = '' OR assigned_trainer = 'Lead Trainer'";
+            try (PreparedStatement ps = conn.prepareStatement(updateTrainees)) {
+                ps.setString(1, trainerName.trim());
+                ps.executeUpdate();
+            }
+        } catch (Exception ex) {
+            System.err.println("Note assigning trainer to unassigned members: " + ex.getMessage());
+        }
+    }
+
     /**
      * Registers a new user. The unique Gym ID is formatted like a roll number:
      * Year + (1000 + autoIncrementId) -> e.g. 20261001, 20261002
@@ -43,9 +105,17 @@ public class UserDAO {
         if (isEmailTaken(email)) {
             return false;
         }
+        if (isPhoneTaken(phone)) {
+            return false;
+        }
 
         String passwordHash = PasswordUtil.hashPassword(plainPassword);
-        String insertSQL = "INSERT INTO users (full_name, email, phone, password_hash, role) VALUES (?, ?, ?, ?, ?)";
+        String assignedTrainer = null;
+        if (role == Role.MEMBER) {
+            assignedTrainer = getRandomTrainerName(); // null if no trainer registered yet
+        }
+
+        String insertSQL = "INSERT INTO users (full_name, email, phone, password_hash, role, assigned_trainer) VALUES (?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(insertSQL, Statement.RETURN_GENERATED_KEYS)) {
@@ -54,14 +124,17 @@ public class UserDAO {
             ps.setString(3, phone != null ? phone.trim() : "");
             ps.setString(4, passwordHash);
             ps.setString(5, role.name());
+            ps.setString(6, assignedTrainer);
 
             int rows = ps.executeUpdate();
             if (rows > 0) {
+                int autoId = 0;
+                String rollGymId = "";
                 try (ResultSet keys = ps.getGeneratedKeys()) {
                     if (keys.next()) {
-                        int autoId = keys.getInt(1);
+                        autoId = keys.getInt(1);
                         int year = LocalDate.now().getYear();
-                        String rollGymId = String.valueOf(year) + (1000 + autoId); // e.g. 20261001
+                        rollGymId = String.valueOf(year) + (1000 + autoId); // e.g. 20261001
 
                         try (PreparedStatement updatePs = conn.prepareStatement("UPDATE users SET gym_id = ? WHERE id = ?")) {
                             updatePs.setString(1, rollGymId);
@@ -70,6 +143,31 @@ public class UserDAO {
                         }
                     }
                 }
+
+                // If Member registered, create/sync initial entry in trainees table
+                if (role == Role.MEMBER) {
+                    try {
+                        String traineeSql = "INSERT INTO trainees (gym_id, full_name, email, phone, assigned_trainer, status) "
+                                          + "VALUES (?, ?, ?, ?, ?, 'Active') "
+                                          + "ON DUPLICATE KEY UPDATE assigned_trainer = COALESCE(assigned_trainer, VALUES(assigned_trainer))";
+                        try (PreparedStatement trPs = conn.prepareStatement(traineeSql)) {
+                            trPs.setString(1, rollGymId);
+                            trPs.setString(2, fullName.trim());
+                            trPs.setString(3, email.trim().toLowerCase());
+                            trPs.setString(4, phone != null ? phone.trim() : "");
+                            trPs.setString(5, assignedTrainer);
+                            trPs.executeUpdate();
+                        }
+                    } catch (Exception ex) {
+                        System.err.println("Note initializing trainee row: " + ex.getMessage());
+                    }
+                }
+
+                // If Trainer registered, assign this new trainer to existing members who don't have one
+                if (role == Role.TRAINER) {
+                    assignTrainerToUnassignedMembers(fullName.trim());
+                }
+
                 return true;
             }
         }
@@ -78,7 +176,7 @@ public class UserDAO {
 
     public User authenticate(String email, String plainPassword) throws SQLException {
         String query = "SELECT id, gym_id, full_name, email, phone, password_hash, role, created_at, "
-                + "membership_plan, membership_price, membership_start_date, membership_end_date, membership_duration_days "
+                + "membership_plan, membership_price, membership_start_date, membership_end_date, membership_duration_days, assigned_trainer "
                 + "FROM users WHERE LOWER(email) = LOWER(?)";
 
         try (Connection conn = DBConnection.getConnection();
@@ -103,6 +201,10 @@ public class UserDAO {
                                 Role.fromString(rs.getString("role")),
                                 rs.getTimestamp("created_at")
                         );
+
+                        String trainer = rs.getString("assigned_trainer");
+                        user.setAssignedTrainer(trainer);
+                        UserSession.setAssignedTrainer(trainer);
 
                         // Load membership details from database if already present
                         try {
@@ -140,6 +242,7 @@ public class UserDAO {
      */
     public void syncUserMembership(User user) {
         if (user == null) return;
+        syncUserTrainer(user);
         String sql = "SELECT membership_plan, membership_price, membership_start_date, membership_end_date, membership_duration_days "
                    + "FROM users WHERE LOWER(email) = ? OR LOWER(gym_id) = ?";
         try (Connection conn = DBConnection.getConnection();
@@ -191,6 +294,64 @@ public class UserDAO {
         } catch (Exception ex) {
             System.err.println("Note syncing user membership from fee_payments: " + ex.getMessage());
         }
+    }
+
+    /**
+     * Synchronizes the assigned trainer for a member.
+     * If no trainer is currently assigned (e.g. member registered when 0 trainers existed),
+     * checks if any trainer is registered now in the database, assigns them, and saves to DB.
+     * If a real trainer is already assigned, leaves it untouched.
+     */
+    public String syncUserTrainer(User user) {
+        if (user == null || user.getRole() != Role.MEMBER) return null;
+        String existingTrainer = user.getAssignedTrainer();
+
+        // 1. Read latest assigned_trainer from users table
+        String sql = "SELECT assigned_trainer FROM users WHERE LOWER(email) = ? OR LOWER(gym_id) = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, user.getEmail().trim().toLowerCase());
+            ps.setString(2, user.getGymId() != null ? user.getGymId().trim().toLowerCase() : "");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String dbTrainer = rs.getString("assigned_trainer");
+                    if (dbTrainer != null && !dbTrainer.trim().isEmpty()) {
+                        existingTrainer = dbTrainer.trim();
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            System.err.println("Note reading user assigned_trainer: " + ex.getMessage());
+        }
+
+        // 2. If no trainer is assigned yet, check if any trainer is registered now in the database
+        if (existingTrainer == null || existingTrainer.trim().isEmpty()) {
+            String newTrainer = getRandomTrainerName();
+            if (newTrainer != null && !newTrainer.trim().isEmpty()) {
+                existingTrainer = newTrainer;
+                // Persist assignment for this member in users and trainees tables
+                try (Connection conn = DBConnection.getConnection()) {
+                    try (PreparedStatement ps = conn.prepareStatement("UPDATE users SET assigned_trainer = ? WHERE LOWER(email) = ? OR LOWER(gym_id) = ?")) {
+                        ps.setString(1, existingTrainer);
+                        ps.setString(2, user.getEmail().trim().toLowerCase());
+                        ps.setString(3, user.getGymId() != null ? user.getGymId().trim().toLowerCase() : "");
+                        ps.executeUpdate();
+                    }
+                    try (PreparedStatement ps = conn.prepareStatement("UPDATE trainees SET assigned_trainer = ? WHERE LOWER(email) = ? OR (LOWER(gym_id) = ? AND gym_id != '')")) {
+                        ps.setString(1, existingTrainer);
+                        ps.setString(2, user.getEmail().trim().toLowerCase());
+                        ps.setString(3, user.getGymId() != null ? user.getGymId().trim().toLowerCase() : "");
+                        ps.executeUpdate();
+                    }
+                } catch (Exception ex) {
+                    System.err.println("Note persisting assigned trainer: " + ex.getMessage());
+                }
+            }
+        }
+
+        user.setAssignedTrainer(existingTrainer);
+        UserSession.setAssignedTrainer(existingTrainer);
+        return existingTrainer;
     }
 
     /**

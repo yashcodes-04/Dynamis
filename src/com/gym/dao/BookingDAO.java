@@ -29,6 +29,15 @@ public class BookingDAO implements GenericDAO<BookedSession, Integer> {
         String email = user.getEmail() != null ? user.getEmail().toLowerCase() : "";
         String name = user.getFullName() != null ? user.getFullName() : "Member";
 
+        // Validate that none of the classes currently have an active 1-month booking
+        for (FitnessClass fc : classes) {
+            BookedSession active = getActiveBookingForClass(gymId, email, fc.getClassName());
+            if (active != null) {
+                System.err.println("Active booking already exists for class: " + fc.getClassName());
+                return false;
+            }
+        }
+
         String sql = "INSERT INTO booked_sessions "
                 + "(gym_id, member_email, member_name, class_name, description, level, duration, price, schedule_slot, status) "
                 + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -87,6 +96,20 @@ public class BookingDAO implements GenericDAO<BookedSession, Integer> {
             System.err.println("Error cancelling booking in DB: " + ex.getMessage());
             return false;
         }
+    }
+
+    /**
+     * Checks if the user already has an active (non-expired, CONFIRMED) booking for a specific class within 30 days (1 month).
+     */
+    public BookedSession getActiveBookingForClass(String gymId, String email, String className) {
+        if (className == null || className.trim().isEmpty()) return null;
+        List<BookedSession> bookings = getBookingsForMember(gymId, email);
+        for (BookedSession b : bookings) {
+            if (b.getClassName() != null && b.getClassName().equalsIgnoreCase(className.trim()) && b.isActive()) {
+                return b;
+            }
+        }
+        return null;
     }
 
     @Override

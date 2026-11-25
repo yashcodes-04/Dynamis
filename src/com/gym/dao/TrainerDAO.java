@@ -97,6 +97,18 @@ public class TrainerDAO implements GenericDAO<Trainee, Integer> {
             ps.setString(13, trainee.getStatus() != null ? trainee.getStatus() : "Active");
 
             ps.executeUpdate();
+
+            // Sync assigned trainer back to users table
+            if (trainee.getAssignedTrainer() != null && !trainee.getAssignedTrainer().trim().isEmpty()) {
+                String updateUserSql = "UPDATE users SET assigned_trainer = ? WHERE LOWER(email) = ? OR (LOWER(gym_id) = ? AND gym_id != '')";
+                try (PreparedStatement uPs = conn.prepareStatement(updateUserSql)) {
+                    uPs.setString(1, trainee.getAssignedTrainer().trim());
+                    uPs.setString(2, trainee.getEmail() != null ? trainee.getEmail().trim().toLowerCase() : "");
+                    uPs.setString(3, trainee.getGymId() != null ? trainee.getGymId().trim().toLowerCase() : "");
+                    uPs.executeUpdate();
+                }
+            }
+
             return true;
         } catch (Exception ex) {
             System.err.println("Error saving trainee to DB: " + ex.getMessage());
@@ -112,7 +124,7 @@ public class TrainerDAO implements GenericDAO<Trainee, Integer> {
     @Override
     public List<Trainee> getAll() {
         List<Trainee> list = new ArrayList<>();
-        String sql = "SELECT u.id AS u_id, u.gym_id AS u_gym_id, u.full_name AS u_name, u.email AS u_email, u.phone AS u_phone, "
+        String sql = "SELECT u.id AS u_id, u.gym_id AS u_gym_id, u.full_name AS u_name, u.email AS u_email, u.phone AS u_phone, u.assigned_trainer AS u_trainer, "
                    + "t.id AS t_id, t.body_type, t.fitness_goal, t.current_weight, t.target_weight, t.height_cm, "
                    + "t.assigned_diet_plan, t.trainer_notes, t.assigned_trainer, t.status "
                    + "FROM users u "
@@ -154,7 +166,13 @@ public class TrainerDAO implements GenericDAO<Trainee, Integer> {
                 t.setTrainerNotes(rs.getString("trainer_notes") != null ? rs.getString("trainer_notes") : "");
 
                 String trainer = rs.getString("assigned_trainer");
-                t.setAssignedTrainer(trainer != null && !trainer.trim().isEmpty() ? trainer : "Lead Trainer");
+                if (trainer == null || trainer.trim().isEmpty() || "Lead Trainer".equalsIgnoreCase(trainer.trim())) {
+                    String uTrainer = rs.getString("u_trainer");
+                    if (uTrainer != null && !uTrainer.trim().isEmpty()) {
+                        trainer = uTrainer;
+                    }
+                }
+                t.setAssignedTrainer(trainer != null && !trainer.trim().isEmpty() ? trainer : "Unassigned");
 
                 String status = rs.getString("status");
                 t.setStatus(status != null && !status.trim().isEmpty() ? status : "Active");

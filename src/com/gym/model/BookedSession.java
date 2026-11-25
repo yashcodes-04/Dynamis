@@ -4,6 +4,8 @@
 package com.gym.model;
 
 import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 
 public class BookedSession {
     private int id;
@@ -132,5 +134,37 @@ public class BookedSession {
 
     public void setBookingDate(Timestamp bookingDate) {
         this.bookingDate = bookingDate;
+    }
+
+    /**
+     * A booked session is valid for 1 month (30 days) from the booking date.
+     * Returns true if 30 days have passed.
+     */
+    public boolean isExpired() {
+        if (bookingDate == null) {
+            return false;
+        }
+        LocalDate booked = bookingDate.toLocalDateTime().toLocalDate();
+        long daysPassed = ChronoUnit.DAYS.between(booked, LocalDate.now());
+        return daysPassed >= 30;
+    }
+
+    /**
+     * Returns true if the session is confirmed and within its 30-day (1 month) active validity.
+     */
+    public boolean isActive() {
+        return "CONFIRMED".equalsIgnoreCase(status) && !isExpired();
+    }
+
+    /**
+     * Returns the remaining days of active session validity out of 30 days.
+     */
+    public long getDaysRemaining() {
+        if (bookingDate == null) {
+            return 30;
+        }
+        LocalDate booked = bookingDate.toLocalDateTime().toLocalDate();
+        long daysPassed = ChronoUnit.DAYS.between(booked, LocalDate.now());
+        return Math.max(0, 30 - daysPassed);
     }
 }

@@ -14,6 +14,7 @@ import com.gym.exception.GymException;
 import com.gym.model.DietPlan;
 import com.gym.model.Role;
 import com.gym.model.Trainee;
+import com.gym.session.UserSession;
 import com.gym.ui.MainFrame;
 import com.gym.ui.Theme;
 import com.gym.ui.ThemedDialog;
@@ -296,7 +297,7 @@ public class TrainerDashboard extends BaseDashboard {
         tableCard.add(topControls, BorderLayout.NORTH);
 
         // Table
-        String[] cols = {"Gym ID", "Member Name", "Email", "Phone", "Body Type", "Fitness Goal", "Current Wt", "Target Wt", "Height", "BMI", "Assigned Diet Plan", "Status"};
+        String[] cols = {"Gym ID", "Member Name", "Email", "Phone", "Assigned Trainer", "Body Type", "Fitness Goal", "Current Wt", "Target Wt", "Height", "BMI", "Assigned Diet Plan", "Status"};
         traineeTableModel = new DefaultTableModel(cols, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -310,16 +311,17 @@ public class TrainerDashboard extends BaseDashboard {
 
         traineeTable.getColumnModel().getColumn(0).setPreferredWidth(90);  // Gym ID
         traineeTable.getColumnModel().getColumn(1).setPreferredWidth(160); // Member Name
-        traineeTable.getColumnModel().getColumn(2).setPreferredWidth(200); // Email
+        traineeTable.getColumnModel().getColumn(2).setPreferredWidth(190); // Email
         traineeTable.getColumnModel().getColumn(3).setPreferredWidth(110); // Phone
-        traineeTable.getColumnModel().getColumn(4).setPreferredWidth(105); // Body Type
-        traineeTable.getColumnModel().getColumn(5).setPreferredWidth(180); // Fitness Goal
-        traineeTable.getColumnModel().getColumn(6).setPreferredWidth(85);  // Current Wt
-        traineeTable.getColumnModel().getColumn(7).setPreferredWidth(85);  // Target Wt
-        traineeTable.getColumnModel().getColumn(8).setPreferredWidth(80);  // Height
-        traineeTable.getColumnModel().getColumn(9).setPreferredWidth(75);  // BMI
-        traineeTable.getColumnModel().getColumn(10).setPreferredWidth(220); // Assigned Diet Plan
-        traineeTable.getColumnModel().getColumn(11).setPreferredWidth(85);  // Status
+        traineeTable.getColumnModel().getColumn(4).setPreferredWidth(140); // Assigned Trainer
+        traineeTable.getColumnModel().getColumn(5).setPreferredWidth(105); // Body Type
+        traineeTable.getColumnModel().getColumn(6).setPreferredWidth(170); // Fitness Goal
+        traineeTable.getColumnModel().getColumn(7).setPreferredWidth(85);  // Current Wt
+        traineeTable.getColumnModel().getColumn(8).setPreferredWidth(85);  // Target Wt
+        traineeTable.getColumnModel().getColumn(9).setPreferredWidth(80);  // Height
+        traineeTable.getColumnModel().getColumn(10).setPreferredWidth(75); // BMI
+        traineeTable.getColumnModel().getColumn(11).setPreferredWidth(210); // Assigned Diet Plan
+        traineeTable.getColumnModel().getColumn(12).setPreferredWidth(85);  // Status
 
         // Selection listener to populate assessment form
         traineeTable.getSelectionModel().addListSelectionListener(e -> {
@@ -563,9 +565,13 @@ public class TrainerDashboard extends BaseDashboard {
         String rawPlan = (String) formDietPlanCombo.getSelectedItem();
         String assignedPlan = rawPlan != null ? rawPlan.split(" \\(")[0] : "Standard Maintenance";
 
+        String loggedTrainer = UserSession.getCurrentUser() != null && UserSession.getCurrentUser().getFullName() != null
+                ? UserSession.getCurrentUser().getFullName().trim()
+                : "Lead Trainer";
+
         Trainee trainee = new Trainee(
                 0, gymId, name, email, phone, bodyType, goal, currWeight, targetWeight, height,
-                assignedPlan, notes, "Lead Trainer", 10, "Active"
+                assignedPlan, notes, loggedTrainer, 10, "Active"
         );
 
         saveTraineeBtn.setEnabled(false);
@@ -667,6 +673,7 @@ public class TrainerDashboard extends BaseDashboard {
                     t.getFullName(),
                     t.getEmail(),
                     t.getPhone() != null ? t.getPhone() : "--",
+                    t.getAssignedTrainer() != null ? t.getAssignedTrainer() : "Unassigned",
                     t.getBodyType(),
                     t.getFitnessGoal(),
                     String.format("%.1f kg", t.getCurrentWeight()),

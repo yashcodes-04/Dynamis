@@ -121,22 +121,31 @@ public class MainFrame extends JFrame {
         }
         // Condition 2: Days are over (0 days left) -> block entry and show renewal prompt
         else if (plan != null && !plan.trim().isEmpty() && daysLeft <= 0) {
+            chooseMembershipPanel.setCanReturnToDashboard(false);
             chooseMembershipPanel.setExpiredNotice(plan, UserSession.getRenewalDueDate());
             showCard(CARD_CHOOSE_MEMBERSHIP);
         }
         // Condition 3: Membership plan is null -> block entry and show choose membership
         else {
+            chooseMembershipPanel.setCanReturnToDashboard(false);
             chooseMembershipPanel.resetSelection();
             showCard(CARD_CHOOSE_MEMBERSHIP);
         }
     }
 
     public void showChooseMembership() {
+        showChooseMembership(false);
+    }
+
+    public void showChooseMembership(boolean canReturnToDashboard) {
+        boolean allowReturn = canReturnToDashboard && UserSession.isLoggedIn() && UserSession.hasActiveValidMembership();
         chooseMembershipPanel.resetSelection();
+        chooseMembershipPanel.setCanReturnToDashboard(allowReturn);
         showCard(CARD_CHOOSE_MEMBERSHIP);
     }
 
     public void openMemberDashboard(String planName, double price, int durationDays) {
+        memberDashboard.updateMembership(planName, price, durationDays);
         memberDashboard.refreshUserInfo();
         showCard(CARD_MEMBER);
     }
