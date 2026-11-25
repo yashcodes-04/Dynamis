@@ -260,6 +260,38 @@ public class DBConnection {
 
             stmt.execute(createTraineesSQL);
             stmt.execute(createDietPlansSQL);
+
+            // Seed default curated diet plans into database if empty
+            try (ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM diet_plans")) {
+                if (rs.next() && rs.getInt(1) == 0) {
+                    String seedSql = "INSERT INTO diet_plans (plan_name, body_type, goal, daily_calories, protein_grams, carbs_grams, "
+                            + "fats_grams, water_liters, breakfast, mid_morning_snack, lunch, pre_workout, post_workout, dinner, guidelines) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    try (java.sql.PreparedStatement ps = conn.prepareStatement(seedSql)) {
+                        for (com.gym.model.DietPlan dp : com.gym.model.DietPlan.getDefaultDietPlans()) {
+                            ps.setString(1, dp.getPlanName());
+                            ps.setString(2, dp.getBodyType());
+                            ps.setString(3, dp.getGoal());
+                            ps.setInt(4, dp.getDailyCalories());
+                            ps.setInt(5, dp.getProteinGrams());
+                            ps.setInt(6, dp.getCarbsGrams());
+                            ps.setInt(7, dp.getFatsGrams());
+                            ps.setDouble(8, dp.getWaterLiters());
+                            ps.setString(9, dp.getBreakfast() != null ? dp.getBreakfast() : "");
+                            ps.setString(10, dp.getMidMorningSnack() != null ? dp.getMidMorningSnack() : "");
+                            ps.setString(11, dp.getLunch() != null ? dp.getLunch() : "");
+                            ps.setString(12, dp.getPreWorkout() != null ? dp.getPreWorkout() : "");
+                            ps.setString(13, dp.getPostWorkout() != null ? dp.getPostWorkout() : "");
+                            ps.setString(14, dp.getDinner() != null ? dp.getDinner() : "");
+                            ps.setString(15, dp.getGuidelines() != null ? dp.getGuidelines() : "");
+                            ps.addBatch();
+                        }
+                        ps.executeBatch();
+                    }
+                }
+            } catch (Exception ex) {
+                System.err.println("Note on diet_plans seeding: " + ex.getMessage());
+            }
         } catch (SQLException e) {
             System.err.println("Note on table check: " + e.getMessage());
         }

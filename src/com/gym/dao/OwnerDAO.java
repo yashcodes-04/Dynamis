@@ -30,9 +30,7 @@ import java.util.stream.Collectors;
 
 public class OwnerDAO {
 
-    // Syllabus Unit 2 (Lectures 20-22): Thread-safe in-memory cache for instant offline tolerance
-    private static final List<MonthlyStat> IN_MEMORY_MONTHLY_STATS = new CopyOnWriteArrayList<>();
-    private static final List<InactiveMember> IN_MEMORY_INACTIVE_MEMBERS = new CopyOnWriteArrayList<>();
+    // Syllabus Unit 2 (Lectures 20-22): Map for tracking follow-up statuses
     private static final Map<String, String> FOLLOW_UP_MAP = new ConcurrentHashMap<>();
     private static boolean initialized = false;
 
@@ -42,52 +40,6 @@ public class OwnerDAO {
 
     private synchronized void ensureInitialized() {
         if (!initialized) {
-            // Seed sample realistic monthly statistics
-            IN_MEMORY_MONTHLY_STATS.add(new MonthlyStat("2026-11", "November 2026", 112500.0, 36, 18, 480, "Quarterly Pass"));
-            IN_MEMORY_MONTHLY_STATS.add(new MonthlyStat("2026-10", "October 2026", 98000.0, 31, 14, 420, "Annual Pass"));
-            IN_MEMORY_MONTHLY_STATS.add(new MonthlyStat("2026-09", "September 2026", 87500.0, 28, 12, 395, "Monthly Pass"));
-            IN_MEMORY_MONTHLY_STATS.add(new MonthlyStat("2026-08", "August 2026", 94000.0, 29, 15, 410, "Half-Yearly Pass"));
-            IN_MEMORY_MONTHLY_STATS.add(new MonthlyStat("2026-07", "July 2026", 76000.0, 24, 11, 350, "Monthly Pass"));
-            IN_MEMORY_MONTHLY_STATS.add(new MonthlyStat("2026-06", "June 2026", 83000.0, 26, 13, 375, "Quarterly Pass"));
-
-            // Seed realistic sample inactive/expired/dormant members
-            LocalDate today = LocalDate.now();
-            IN_MEMORY_INACTIVE_MEMBERS.add(new InactiveMember(
-                    "20261011", "Vikram Rathore", "vikram.rathore@example.com", "9811223344",
-                    "Monthly Pass", today.minusDays(18), 18, today.minusDays(22).toString(),
-                    "Expired Membership", "Pending"
-            ));
-
-            IN_MEMORY_INACTIVE_MEMBERS.add(new InactiveMember(
-                    "20261012", "Ananya Deshmukh", "ananya.d@example.com", "9822334455",
-                    "Quarterly Pass", today.minusDays(42), 42, today.minusDays(48).toString(),
-                    "Expired Membership", "Reminder Sent"
-            ));
-
-            IN_MEMORY_INACTIVE_MEMBERS.add(new InactiveMember(
-                    "20261013", "Rohan Mehra", "rohan.mehra@example.com", "9833445566",
-                    "None", null, 65, "Never",
-                    "No Plan Chosen", "Contacted"
-            ));
-
-            IN_MEMORY_INACTIVE_MEMBERS.add(new InactiveMember(
-                    "20261014", "Deepika Padukone", "deepika.p@example.com", "9844556677",
-                    "Half-Yearly Pass", today.plusDays(15), 35, today.minusDays(35).toString(),
-                    "Dormant (30+ Days)", "Pending"
-            ));
-
-            IN_MEMORY_INACTIVE_MEMBERS.add(new InactiveMember(
-                    "20261015", "Kunal Kapoor", "kunal.k@example.com", "9855667788",
-                    "Annual Pass", today.minusDays(6), 6, today.minusDays(9).toString(),
-                    "Expired Membership", "Pending"
-            ));
-
-            IN_MEMORY_INACTIVE_MEMBERS.add(new InactiveMember(
-                    "20261016", "Pooja Hegde", "pooja.hegde@example.com", "9866778899",
-                    "None", null, 90, "Never",
-                    "No Plan Chosen", "Pending"
-            ));
-
             initialized = true;
         }
     }
@@ -97,44 +49,39 @@ public class OwnerDAO {
     // =========================================================================
 
     public double getTotalRevenue() {
-        String sql = "SELECT SUM(amount) FROM fee_payments";
+        String sql = "SELECT COALESCE(SUM(amount), 0.0) FROM fee_payments";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
-                double val = rs.getDouble(1);
-                if (val > 0) return val;
+                return rs.getDouble(1);
             }
         } catch (Exception ignored) {}
-
-        // Fallback calculation from monthly stats stream
-        return IN_MEMORY_MONTHLY_STATS.stream().mapToDouble(MonthlyStat::getTotalRevenue).sum();
+        return 0.0;
     }
 
     public int getActiveMembersCount() {
-        String sql = "SELECT COUNT(*) FROM users WHERE role = 'MEMBER' AND membership_end_date >= CURRENT_DATE()";
+        String sql = "SELECT COUNT(*) FROM users WHERE role = 'MEMBER' AND (membership_end_date IS NOT NULL AND membership_end_date >= CURRENT_DATE())";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
-                int count = rs.getInt(1);
-                if (count > 0) return count;
+                return rs.getInt(1);
             }
         } catch (Exception ignored) {}
-        return 14; // Default realistic active members
+        return 0;
     }
 
     public int getInactiveMembersCount() {
-        String sql = "SELECT COUNT(*) FROM users WHERE role = 'MEMBER' AND (membership_end_date < CURRENT_DATE() OR membership_plan IS NULL)";
+        String sql = "SELECT COUNT(*) FROM users WHERE role = 'MEMBER' AND (membership_end_date IS NULL OR membership_end_date < CURRENT_DATE())";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
-                int count = rs.getInt(1);
-                if (count > 0) return count;
+                return rs.getInt(1);
             }
         } catch (Exception ignored) {}
-        return IN_MEMORY_INACTIVE_MEMBERS.size();
+        return 0;
     }
 
     public int getStaffCount() {
@@ -143,11 +90,10 @@ public class OwnerDAO {
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
-                int count = rs.getInt(1);
-                if (count > 0) return count;
+                return rs.getInt(1);
             }
         } catch (Exception ignored) {}
-        return 5; // Default staff roster size
+        return 0;
     }
 
     public int getNewSignupsThisMonth() {
@@ -156,11 +102,10 @@ public class OwnerDAO {
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
-                int count = rs.getInt(1);
-                if (count > 0) return count;
+                return rs.getInt(1);
             }
         } catch (Exception ignored) {}
-        return 8;
+        return 0;
     }
 
     public int getTodayCheckinCount() {
@@ -209,14 +154,7 @@ public class OwnerDAO {
             }
         } catch (Exception ignored) {}
 
-        if (!stats.isEmpty()) {
-            return stats;
-        }
-
-        // Return sorted in-memory monthly statistics (Lecture 23-25)
-        List<MonthlyStat> fallback = new ArrayList<>(IN_MEMORY_MONTHLY_STATS);
-        fallback.sort(MonthlyStat.BY_DATE_DESC);
-        return fallback;
+        return stats;
     }
 
     private int getSignupsForMonth(String ym) {
@@ -270,8 +208,8 @@ public class OwnerDAO {
                    + "u.membership_end_date, "
                    + "(SELECT MAX(check_in_time) FROM attendance a WHERE a.gym_id = u.gym_id OR a.member_email = u.email) AS last_checkin "
                    + "FROM users u "
-                   + "WHERE u.role = 'MEMBER' AND (u.membership_end_date < CURRENT_DATE() OR u.membership_plan IS NULL) "
-                   + "ORDER BY u.membership_end_date ASC";
+                   + "WHERE u.role = 'MEMBER' AND (u.membership_end_date IS NULL OR u.membership_end_date < CURRENT_DATE()) "
+                   + "ORDER BY u.id ASC";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
@@ -290,7 +228,7 @@ public class OwnerDAO {
                 long daysInactive;
                 String reason;
 
-                if (plan == null || plan.trim().isEmpty()) {
+                if (plan == null || plan.trim().isEmpty() || plan.equalsIgnoreCase("None")) {
                     reason = "No Plan Chosen";
                     daysInactive = 30;
                 } else if (endDate != null && endDate.isBefore(today)) {
@@ -302,21 +240,13 @@ public class OwnerDAO {
                 }
 
                 String lastCheckStr = lastCheck != null ? lastCheck.toLocalDateTime().toLocalDate().toString() : "Never";
-                String followUp = FOLLOW_UP_MAP.getOrDefault(email != null ? email.toLowerCase() : gymId, "Pending");
+                String followUp = FOLLOW_UP_MAP.getOrDefault(email != null ? email.toLowerCase() : (gymId != null ? gymId.toLowerCase() : ""), "Pending");
 
-                all.add(new InactiveMember(gymId, name, email, phone, plan, endDate, daysInactive, lastCheckStr, reason, followUp));
+                all.add(new InactiveMember(gymId != null ? gymId : "", name != null ? name : "Member",
+                        email != null ? email : "", phone != null ? phone : "",
+                        plan != null ? plan : "None", endDate, daysInactive, lastCheckStr, reason, followUp));
             }
         } catch (Exception ignored) {}
-
-        // Fallback to in-memory if DB is offline or returned empty
-        if (all.isEmpty()) {
-            all = new ArrayList<>(IN_MEMORY_INACTIVE_MEMBERS);
-            for (InactiveMember m : all) {
-                if (FOLLOW_UP_MAP.containsKey(m.getEmail().toLowerCase())) {
-                    m.setFollowUpStatus(FOLLOW_UP_MAP.get(m.getEmail().toLowerCase()));
-                }
-            }
-        }
 
         // Syllabus Unit 5 (Lectures 43-46): Stream API filtering with Lambdas & Predicates
         final String kw = keyword != null ? keyword.trim().toLowerCase() : "";
@@ -340,11 +270,6 @@ public class OwnerDAO {
     public synchronized void updateMemberFollowUpStatus(String identifier, String newStatus) {
         if (identifier == null) return;
         FOLLOW_UP_MAP.put(identifier.toLowerCase(), newStatus);
-        for (InactiveMember im : IN_MEMORY_INACTIVE_MEMBERS) {
-            if (identifier.equalsIgnoreCase(im.getEmail()) || identifier.equalsIgnoreCase(im.getGymId())) {
-                im.setFollowUpStatus(newStatus);
-            }
-        }
     }
 
     // =========================================================================
@@ -373,16 +298,6 @@ public class OwnerDAO {
             }
         } catch (Exception ignored) {}
 
-        if (!list.isEmpty()) {
-            return list;
-        }
-
-        // Fallback default staff roster
-        list.add(new User(101, "STF-101", "Alex Rivera", "alex.trainer@gym.com", "9876543201", "", Role.TRAINER, new Timestamp(System.currentTimeMillis())));
-        list.add(new User(102, "STF-102", "Elena Gomez", "elena.trainer@gym.com", "9876543202", "", Role.TRAINER, new Timestamp(System.currentTimeMillis())));
-        list.add(new User(103, "STF-103", "Chris Thorne", "chris.trainer@gym.com", "9876543203", "", Role.TRAINER, new Timestamp(System.currentTimeMillis())));
-        list.add(new User(104, "STF-104", "Samira Patel", "samira.reception@gym.com", "9876543204", "", Role.RECEPTIONIST, new Timestamp(System.currentTimeMillis())));
-        list.add(new User(105, "STF-105", "Lucas Vance", "lucas.reception@gym.com", "9876543205", "", Role.RECEPTIONIST, new Timestamp(System.currentTimeMillis())));
         return list;
     }
 

@@ -20,10 +20,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 public class BookingDAO implements GenericDAO<BookedSession, Integer> {
 
-    // In-memory fallback and cache for instant access and offline tolerance
-    private static final List<BookedSession> IN_MEMORY_BOOKINGS = new CopyOnWriteArrayList<>();
-    private static int idSequence = 1000;
-
     public synchronized boolean bookSessions(User user, List<FitnessClass> classes) {
         if (user == null || classes == null || classes.isEmpty()) {
             return false;
@@ -33,13 +29,12 @@ public class BookingDAO implements GenericDAO<BookedSession, Integer> {
         String email = user.getEmail() != null ? user.getEmail().toLowerCase() : "";
         String name = user.getFullName() != null ? user.getFullName() : "Member";
 
-        // 1. Attempt Database insert
         String sql = "INSERT INTO booked_sessions "
                 + "(gym_id, member_email, member_name, class_name, description, level, duration, price, schedule_slot, status) "
                 + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+             PreparedStatement ps = conn.prepareStatement(sql)) {
             for (FitnessClass fc : classes) {
                 ps.setString(1, gymId);
                 ps.setString(2, email);
@@ -54,30 +49,11 @@ public class BookingDAO implements GenericDAO<BookedSession, Integer> {
                 ps.addBatch();
             }
             ps.executeBatch();
+            return true;
         } catch (Exception ex) {
-            System.err.println("Note on DB booking persistence: " + ex.getMessage() + " (using memory store)");
+            System.err.println("Error saving booked sessions to DB: " + ex.getMessage());
+            return false;
         }
-
-        // 2. Add to in-memory store
-        for (FitnessClass fc : classes) {
-            BookedSession session = new BookedSession();
-            session.setId(++idSequence);
-            session.setGymId(gymId);
-            session.setMemberEmail(email);
-            session.setMemberName(name);
-            session.setClassName(fc.getClassName());
-            session.setDescription(fc.getDescription());
-            session.setLevel(fc.getLevel());
-            session.setDuration(fc.getDuration());
-            session.setPrice(fc.getPrice());
-            session.setScheduleSlot(fc.getScheduleSlot());
-            session.setStatus("CONFIRMED");
-            session.setBookingDate(new Timestamp(System.currentTimeMillis()));
-
-            IN_MEMORY_BOOKINGS.add(session);
-        }
-
-        return true;
     }
 
     public List<BookedSession> getBookingsForMember(String gymId, String email) {
@@ -85,73 +61,78 @@ public class BookingDAO implements GenericDAO<BookedSession, Integer> {
         String normEmail = email != null ? email.trim().toLowerCase() : "";
         String normGymId = gymId != null ? gymId.trim().toLowerCase() : "";
 
-        // Attempt DB fetch first
+        String sql = "SELECT * FROM booked_sessions WHERE (LOWER(gym_id) = ? AND gym_id != '') OR LOWER(member_email) = ? ORDER BY id DESC";
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(
-                     "SELECT * FROM booked_sessions WHERE (LOWER(gym_id) = ? AND gym_id != '') OR LOWER(member_email) = ? ORDER BY id DESC")) {
+             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, normGymId);
             ps.setString(2, normEmail);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    BookedSession b = new BookedSession();
-                    b.setId(rs.getInt("id"));
-                    b.setGymId(rs.getString("gym_id"));
-                    b.setMemberEmail(rs.getString("member_email"));
-                    b.setMemberName(rs.getString("member_name"));
-                    b.setClassName(rs.getString("class_name"));
-                    b.setDescription(rs.getString("description"));
-                    b.setLevel(rs.getString("level"));
-                    b.setDuration(rs.getString("duration"));
-                    b.setPrice(rs.getDouble("price"));
-                    b.setScheduleSlot(rs.getString("schedule_slot"));
-                    b.setStatus(rs.getString("status"));
-                    b.setBookingDate(rs.getTimestamp("booking_date"));
-                    list.add(b);
+                    list.add(mapResultSetToBookedSession(rs));
                 }
             }
         } catch (Exception ex) {
-            System.err.println("Note fetching DB bookings: " + ex.getMessage());
-        }
-
-        // Fallback / merge with in-memory if DB list is empty or offline
-        if (list.isEmpty()) {
-            for (BookedSession b : IN_MEMORY_BOOKINGS) {
-                boolean matchEmail = !normEmail.isEmpty() && normEmail.equalsIgnoreCase(b.getMemberEmail());
-                boolean matchGymId = !normGymId.isEmpty() && normGymId.equalsIgnoreCase(b.getGymId());
-                if (matchEmail || matchGymId) {
-                    list.add(b);
-                }
-            }
+            System.err.println("Error fetching member bookings from DB: " + ex.getMessage());
         }
 
         return list;
     }
 
     public boolean cancelBooking(int id) {
-        IN_MEMORY_BOOKINGS.removeIf(b -> b.getId() == id);
-
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement("DELETE FROM booked_sessions WHERE id = ?")) {
             ps.setInt(1, id);
             return ps.executeUpdate() > 0;
         } catch (Exception ex) {
-            System.err.println("Note cancelling booking in DB: " + ex.getMessage());
-            return true;
+            System.err.println("Error cancelling booking in DB: " + ex.getMessage());
+            return false;
         }
     }
 
     @Override
     public List<BookedSession> getAll() throws SQLException {
-        return new ArrayList<>(IN_MEMORY_BOOKINGS);
+        List<BookedSession> list = new ArrayList<>();
+        String sql = "SELECT * FROM booked_sessions ORDER BY id DESC";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                list.add(mapResultSetToBookedSession(rs));
+            }
+        }
+        return list;
     }
 
     @Override
     public BookedSession findById(Integer id) throws SQLException {
-        for (BookedSession b : IN_MEMORY_BOOKINGS) {
-            if (b.getId() == id) {
-                return b;
+        if (id == null) return null;
+        String sql = "SELECT * FROM booked_sessions WHERE id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return mapResultSetToBookedSession(rs);
+                }
             }
         }
         return null;
+    }
+
+    private BookedSession mapResultSetToBookedSession(ResultSet rs) throws SQLException {
+        BookedSession b = new BookedSession();
+        b.setId(rs.getInt("id"));
+        b.setGymId(rs.getString("gym_id"));
+        b.setMemberEmail(rs.getString("member_email"));
+        b.setMemberName(rs.getString("member_name"));
+        b.setClassName(rs.getString("class_name"));
+        b.setDescription(rs.getString("description"));
+        b.setLevel(rs.getString("level"));
+        b.setDuration(rs.getString("duration"));
+        b.setPrice(rs.getDouble("price"));
+        b.setScheduleSlot(rs.getString("schedule_slot"));
+        b.setStatus(rs.getString("status"));
+        b.setBookingDate(rs.getTimestamp("booking_date"));
+        return b;
     }
 }

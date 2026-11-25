@@ -174,6 +174,8 @@ public class OwnerDashboard extends BaseDashboard {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(getBackground());
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
+                g2.setColor(Theme.CARD_BORDER);
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 10, 10);
                 super.paintComponent(g);
                 g2.dispose();
             }
@@ -251,7 +253,9 @@ public class OwnerDashboard extends BaseDashboard {
         refreshBtn.addActionListener(e -> loadMonthlyStatsData());
 
         JButton exportCsvBtn = Theme.createSecondaryButton("Export Monthly CSV");
-        exportCsvBtn.setBackground(new Color(22, 101, 52));
+        exportCsvBtn.setBackground(new Color(16, 185, 129)); // Vivid Emerald Green
+        exportCsvBtn.setForeground(Color.WHITE);
+        exportCsvBtn.setFont(Theme.FONT_BOLD);
         exportCsvBtn.addActionListener(e -> handleExportMonthlyCSV());
 
         controls.add(refreshBtn);
@@ -274,13 +278,13 @@ public class OwnerDashboard extends BaseDashboard {
         monthlyStatsTable = new JTable(monthlyStatsTableModel);
         styleTable(monthlyStatsTable);
 
-        monthlyStatsTable.getColumnModel().getColumn(0).setPreferredWidth(140);
-        monthlyStatsTable.getColumnModel().getColumn(1).setPreferredWidth(130);
-        monthlyStatsTable.getColumnModel().getColumn(2).setPreferredWidth(100);
-        monthlyStatsTable.getColumnModel().getColumn(3).setPreferredWidth(110);
-        monthlyStatsTable.getColumnModel().getColumn(4).setPreferredWidth(120);
-        monthlyStatsTable.getColumnModel().getColumn(5).setPreferredWidth(130);
-        monthlyStatsTable.getColumnModel().getColumn(6).setPreferredWidth(160);
+        monthlyStatsTable.getColumnModel().getColumn(0).setPreferredWidth(140); // Month & Year
+        monthlyStatsTable.getColumnModel().getColumn(1).setPreferredWidth(150); // Total Revenue (Rs.)
+        monthlyStatsTable.getColumnModel().getColumn(2).setPreferredWidth(110); // Transactions
+        monthlyStatsTable.getColumnModel().getColumn(3).setPreferredWidth(120); // New Signups
+        monthlyStatsTable.getColumnModel().getColumn(4).setPreferredWidth(130); // Check-ins Logged
+        monthlyStatsTable.getColumnModel().getColumn(5).setPreferredWidth(140); // Average Ticket (Rs.)
+        monthlyStatsTable.getColumnModel().getColumn(6).setPreferredWidth(210); // Top Selling Plan
 
         JScrollPane scrollPane = Theme.createModernScrollPane(monthlyStatsTable);
         screen.add(scrollPane, BorderLayout.CENTER);
@@ -385,12 +389,12 @@ public class OwnerDashboard extends BaseDashboard {
 
         String[] reasons = { "All Inactive", "Expired Membership", "No Plan Chosen", "Dormant (30+ Days)" };
         inactiveReasonFilterCombo = new JComboBox<>(reasons);
-        styleComboBox(inactiveReasonFilterCombo);
-        inactiveReasonFilterCombo.setPreferredSize(new Dimension(170, 36));
+        Theme.styleComboBox(inactiveReasonFilterCombo);
+        inactiveReasonFilterCombo.setPreferredSize(new Dimension(185, 38));
         inactiveReasonFilterCombo.addActionListener(e -> loadInactiveMembersData());
 
         inactiveSearchField = Theme.createStyledTextField();
-        inactiveSearchField.setPreferredSize(new Dimension(170, 36));
+        inactiveSearchField.setPreferredSize(new Dimension(190, 38));
         inactiveSearchField.setToolTipText("Filter by Gym ID, Name, or Email");
         inactiveSearchField.addActionListener(e -> loadInactiveMembersData());
 
@@ -405,7 +409,9 @@ public class OwnerDashboard extends BaseDashboard {
         });
 
         JButton exportCsvBtn = Theme.createSecondaryButton("Export CSV");
-        exportCsvBtn.setBackground(new Color(22, 101, 52));
+        exportCsvBtn.setBackground(new Color(16, 185, 129)); // Vivid Emerald Green
+        exportCsvBtn.setForeground(Color.WHITE);
+        exportCsvBtn.setFont(Theme.FONT_BOLD);
         exportCsvBtn.addActionListener(e -> handleExportInactiveCSV());
 
         controls.add(inactiveReasonFilterCombo);
@@ -430,17 +436,18 @@ public class OwnerDashboard extends BaseDashboard {
 
         inactiveTable = new JTable(inactiveTableModel);
         styleTable(inactiveTable);
+        inactiveTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 
-        inactiveTable.getColumnModel().getColumn(0).setPreferredWidth(85);
-        inactiveTable.getColumnModel().getColumn(1).setPreferredWidth(140);
-        inactiveTable.getColumnModel().getColumn(2).setPreferredWidth(160);
-        inactiveTable.getColumnModel().getColumn(3).setPreferredWidth(100);
-        inactiveTable.getColumnModel().getColumn(4).setPreferredWidth(120);
-        inactiveTable.getColumnModel().getColumn(5).setPreferredWidth(100);
-        inactiveTable.getColumnModel().getColumn(6).setPreferredWidth(90);
-        inactiveTable.getColumnModel().getColumn(7).setPreferredWidth(100);
-        inactiveTable.getColumnModel().getColumn(8).setPreferredWidth(140);
-        inactiveTable.getColumnModel().getColumn(9).setPreferredWidth(110);
+        inactiveTable.getColumnModel().getColumn(0).setPreferredWidth(90);  // Gym ID
+        inactiveTable.getColumnModel().getColumn(1).setPreferredWidth(160); // Member Name
+        inactiveTable.getColumnModel().getColumn(2).setPreferredWidth(200); // Email
+        inactiveTable.getColumnModel().getColumn(3).setPreferredWidth(110); // Phone
+        inactiveTable.getColumnModel().getColumn(4).setPreferredWidth(180); // Last Plan
+        inactiveTable.getColumnModel().getColumn(5).setPreferredWidth(110); // Expiry Date
+        inactiveTable.getColumnModel().getColumn(6).setPreferredWidth(100); // Days Inactive
+        inactiveTable.getColumnModel().getColumn(7).setPreferredWidth(110); // Last Check-in
+        inactiveTable.getColumnModel().getColumn(8).setPreferredWidth(160); // Reason
+        inactiveTable.getColumnModel().getColumn(9).setPreferredWidth(130); // Follow-up Status
 
         JScrollPane scrollPane = Theme.createModernScrollPane(inactiveTable);
         screen.add(scrollPane, BorderLayout.CENTER);
@@ -450,6 +457,7 @@ public class OwnerDashboard extends BaseDashboard {
         bottomBar.setOpaque(false);
 
         JButton reminderBtn = Theme.createPrimaryButton("Send Renewal Reminder / Mark Followed-Up");
+        reminderBtn.setPreferredSize(new Dimension(320, 42));
         reminderBtn.addActionListener(e -> handleSendRenewalReminder());
 
         bottomBar.add(reminderBtn);
@@ -588,14 +596,16 @@ public class OwnerDashboard extends BaseDashboard {
                 "Non-Active & At-Risk Members Retention Report"
         };
         reportTypeCombo = new JComboBox<>(reportTypes);
-        styleComboBox(reportTypeCombo);
-        reportTypeCombo.setPreferredSize(new Dimension(320, 36));
+        Theme.styleComboBox(reportTypeCombo);
+        reportTypeCombo.setPreferredSize(new Dimension(340, 38));
         reportTypeCombo.addActionListener(e -> loadReportPreview());
 
         generateReportBtn = Theme.createPrimaryButton("Generate Live Report");
+        generateReportBtn.setPreferredSize(new Dimension(170, 38));
         generateReportBtn.addActionListener(e -> loadReportPreview());
 
         exportReportBtn = Theme.createSecondaryButton("Export Report (.txt)");
+        exportReportBtn.setPreferredSize(new Dimension(165, 38));
         exportReportBtn.addActionListener(e -> handleExportReportText());
 
         controls.add(reportTypeCombo);
@@ -609,12 +619,13 @@ public class OwnerDashboard extends BaseDashboard {
         // Center Preview Area
         reportPreviewArea = new JTextArea();
         reportPreviewArea.setBackground(Theme.INPUT_BG);
-        reportPreviewArea.setForeground(new Color(230, 235, 245));
+        reportPreviewArea.setForeground(new Color(248, 250, 252));
         reportPreviewArea.setFont(new Font("Consolas", Font.PLAIN, 13));
         reportPreviewArea.setEditable(false);
-        reportPreviewArea.setBorder(BorderFactory.createEmptyBorder(12, 14, 12, 14));
+        reportPreviewArea.setBorder(BorderFactory.createEmptyBorder(14, 16, 14, 16));
 
         JScrollPane scrollPane = Theme.createModernScrollPane(reportPreviewArea);
+        scrollPane.setBorder(Theme.createFieldBorder(Theme.INPUT_BORDER));
         screen.add(scrollPane, BorderLayout.CENTER);
 
         return screen;
@@ -715,12 +726,12 @@ public class OwnerDashboard extends BaseDashboard {
         staffTable = new JTable(staffTableModel);
         styleTable(staffTable);
 
-        staffTable.getColumnModel().getColumn(0).setPreferredWidth(110);
-        staffTable.getColumnModel().getColumn(1).setPreferredWidth(160);
-        staffTable.getColumnModel().getColumn(2).setPreferredWidth(140);
-        staffTable.getColumnModel().getColumn(3).setPreferredWidth(180);
-        staffTable.getColumnModel().getColumn(4).setPreferredWidth(110);
-        staffTable.getColumnModel().getColumn(5).setPreferredWidth(120);
+        staffTable.getColumnModel().getColumn(0).setPreferredWidth(120);
+        staffTable.getColumnModel().getColumn(1).setPreferredWidth(180);
+        staffTable.getColumnModel().getColumn(2).setPreferredWidth(150);
+        staffTable.getColumnModel().getColumn(3).setPreferredWidth(220);
+        staffTable.getColumnModel().getColumn(4).setPreferredWidth(120);
+        staffTable.getColumnModel().getColumn(5).setPreferredWidth(140);
 
         JScrollPane scrollPane = Theme.createModernScrollPane(staffTable);
         screen.add(scrollPane, BorderLayout.CENTER);
@@ -770,24 +781,96 @@ public class OwnerDashboard extends BaseDashboard {
 
         Role[] staffRoles = { Role.TRAINER, Role.RECEPTIONIST };
         JComboBox<Role> roleCombo = new JComboBox<>(staffRoles);
-        styleComboBox(roleCombo);
+        Theme.styleComboBox(roleCombo);
+        roleCombo.setPreferredSize(new Dimension(380, 40));
 
-        JPanel panel = new JPanel(new GridLayout(5, 2, 8, 10));
-        panel.setBackground(Theme.CARD_BG);
-        panel.add(Theme.createFieldLabel("Full Name:"));
-        panel.add(nameField);
-        panel.add(Theme.createFieldLabel("Staff Email:"));
-        panel.add(emailField);
-        panel.add(Theme.createFieldLabel("Phone Number:"));
-        panel.add(phoneField);
-        panel.add(Theme.createFieldLabel("Password:"));
-        panel.add(passField);
-        panel.add(Theme.createFieldLabel("Assigned Role:"));
-        panel.add(roleCombo);
+        // Create high-contrast themed modal dialog
+        JDialog dlg = new JDialog(SwingUtilities.getWindowAncestor(this), "Hire Staff Member", Dialog.ModalityType.APPLICATION_MODAL);
+        dlg.setUndecorated(true);
+        dlg.setBackground(new Color(0, 0, 0, 0));
 
-        int res = JOptionPane.showConfirmDialog(this, panel, "Hire / Register New Staff Member",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (res == JOptionPane.OK_OPTION) {
+        JPanel card = new JPanel(new BorderLayout(0, 16)) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(Theme.CARD_BG);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 16, 16);
+                g2.setColor(Theme.CARD_BORDER);
+                g2.setStroke(new BasicStroke(1.5f));
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 16, 16);
+                g2.dispose();
+            }
+        };
+        card.setOpaque(false);
+        card.setBorder(new EmptyBorder(24, 26, 24, 26));
+
+        JLabel titleLbl = new JLabel("Hire / Register New Staff Personnel");
+        titleLbl.setFont(Theme.FONT_TITLE);
+        titleLbl.setForeground(Theme.TEXT_LIGHT);
+
+        JLabel subLbl = new JLabel("Register a new Trainer or Receptionist to the active gym roster:");
+        subLbl.setFont(Theme.FONT_SUBTITLE);
+        subLbl.setForeground(Theme.ROLE_OWNER_COLOR);
+
+        JPanel header = new JPanel();
+        header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
+        header.setOpaque(false);
+        header.add(titleLbl);
+        header.add(Box.createVerticalStrut(4));
+        header.add(subLbl);
+        card.add(header, BorderLayout.NORTH);
+
+        JPanel formGrid = new JPanel(new GridLayout(5, 1, 0, 10));
+        formGrid.setOpaque(false);
+
+        JPanel p1 = new JPanel(new BorderLayout(0, 4)); p1.setOpaque(false);
+        p1.add(Theme.createFieldLabel("Full Employee Name:"), BorderLayout.NORTH); p1.add(nameField, BorderLayout.CENTER);
+
+        JPanel p2 = new JPanel(new BorderLayout(0, 4)); p2.setOpaque(false);
+        p2.add(Theme.createFieldLabel("Staff Official Email Address:"), BorderLayout.NORTH); p2.add(emailField, BorderLayout.CENTER);
+
+        JPanel p3 = new JPanel(new BorderLayout(0, 4)); p3.setOpaque(false);
+        p3.add(Theme.createFieldLabel("Phone Number:"), BorderLayout.NORTH); p3.add(phoneField, BorderLayout.CENTER);
+
+        JPanel p4 = new JPanel(new BorderLayout(0, 4)); p4.setOpaque(false);
+        p4.add(Theme.createFieldLabel("Temporary Login Password:"), BorderLayout.NORTH); p4.add(passField, BorderLayout.CENTER);
+
+        JPanel p5 = new JPanel(new BorderLayout(0, 4)); p5.setOpaque(false);
+        p5.add(Theme.createFieldLabel("Assigned Staff Role:"), BorderLayout.NORTH); p5.add(roleCombo, BorderLayout.CENTER);
+
+        formGrid.add(p1);
+        formGrid.add(p2);
+        formGrid.add(p3);
+        formGrid.add(p4);
+        formGrid.add(p5);
+        card.add(formGrid, BorderLayout.CENTER);
+
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
+        btnPanel.setOpaque(false);
+
+        JButton cancelBtn = Theme.createSecondaryButton("Cancel");
+        cancelBtn.setPreferredSize(new Dimension(110, 42));
+        cancelBtn.addActionListener(e -> dlg.dispose());
+
+        final boolean[] confirmed = {false};
+        JButton confirmBtn = Theme.createPrimaryButton("Hire Staff");
+        confirmBtn.setPreferredSize(new Dimension(140, 42));
+        confirmBtn.addActionListener(e -> {
+            confirmed[0] = true;
+            dlg.dispose();
+        });
+
+        btnPanel.add(cancelBtn);
+        btnPanel.add(confirmBtn);
+        card.add(btnPanel, BorderLayout.SOUTH);
+
+        dlg.setContentPane(card);
+        dlg.pack();
+        dlg.setLocationRelativeTo(this);
+        dlg.setVisible(true);
+
+        if (confirmed[0]) {
             String name = nameField.getText().trim();
             String email = emailField.getText().trim();
             String phone = phoneField.getText().trim();
@@ -860,15 +943,6 @@ public class OwnerDashboard extends BaseDashboard {
             JLabel valueLabel) {
         JLabel subLbl = new JLabel(subtitle);
         return createMetricCard(title, defaultValue, subtitle, accentColor, valueLabel, subLbl);
-    }
-
-    private void styleComboBox(JComboBox<?> box) {
-        box.setBackground(Theme.INPUT_BG);
-        box.setForeground(Theme.TEXT_LIGHT);
-        box.setFont(Theme.FONT_BODY);
-        box.setPreferredSize(new Dimension(box.getPreferredSize().width, 38));
-        box.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
-        box.setBorder(Theme.createFieldBorder(Theme.INPUT_BORDER));
     }
 
     @Override

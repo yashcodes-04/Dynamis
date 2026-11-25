@@ -32,69 +32,14 @@ public class TrainerDAO implements GenericDAO<Trainee, Integer> {
     // Syllabus Unit 3 (Lectures 30-31): Thread-safe collection for concurrent
     // SwingWorker access
     private static final Map<String, Trainee> TRAINEE_CACHE = new ConcurrentHashMap<>();
-    private static final List<Trainee> IN_MEMORY_TRAINEES = new CopyOnWriteArrayList<>();
-    private static final List<DietPlan> IN_MEMORY_DIET_PLANS = new CopyOnWriteArrayList<>();
     private static boolean initialized = false;
 
     public TrainerDAO() {
         ensureInitialized();
     }
 
-    /**
-     * Initializes default trainees & diet plans in-memory so app functions
-     * immediately
-     * even prior to or without active MySQL connection.
-     */
     private synchronized void ensureInitialized() {
         if (!initialized) {
-            // Seed default curated diet plans
-            IN_MEMORY_DIET_PLANS.addAll(DietPlan.getDefaultDietPlans());
-
-            // Seed default sample trainees with diverse body types
-            IN_MEMORY_TRAINEES.add(new Trainee(
-                    1, "20261001", "Jack Bauer", "jack.bauer@gym.com", "9876543210",
-                    "Ectomorph", "Hypertrophy / Bulk", 64.5, 75.0, 180.0,
-                    "Ectomorph Mass Surge Surplus", "Hard gainer. Focus on compound lifts: Deadlift, Squat, Bench.",
-                    "Lead Trainer", 18, "Active"));
-
-            IN_MEMORY_TRAINEES.add(new Trainee(
-                    2, "20261002", "Maria Vance", "maria.vance@gym.com", "9876543211",
-                    "Endomorph", "Fat Loss & Conditioning", 78.0, 62.0, 162.0,
-                    "Endomorph Carb-Cycling Fat Shred", "Carb sensitivity noted. Advised 45 min daily cardio + HIIT.",
-                    "Lead Trainer", 14, "Active"));
-
-            IN_MEMORY_TRAINEES.add(new Trainee(
-                    3, "20261003", "Ryan Howard", "ryan.howard@gym.com", "9876543212",
-                    "Mesomorph", "Strength & Hypertrophy", 82.0, 85.0, 178.0,
-                    "Mesomorph High-Protein Power Fuel", "Powerlifting focus. Excellent muscle recovery rate.",
-                    "Lead Trainer", 22, "Active"));
-
-            IN_MEMORY_TRAINEES.add(new Trainee(
-                    4, "20261004", "Jessica Alba", "jessica.alba@gym.com", "9876543213",
-                    "Mesomorph", "Lean Recomp / Performance", 58.0, 56.0, 168.0,
-                    "Mesomorph Athletic Recomposition", "Core strength & mobility focus. Great discipline.",
-                    "Lead Trainer", 9, "Active"));
-
-            IN_MEMORY_TRAINEES.add(new Trainee(
-                    5, "20261005", "Ken Adams", "ken.adams@gym.com", "9876543214",
-                    "Ectomorph", "Lean Bulk / Muscle Gain", 61.0, 70.0, 175.0,
-                    "Ectomorph Clean Hypertrophy Fuel", "Calorie surplus reminder given. Track macros daily.",
-                    "Lead Trainer", 12, "Active"));
-
-            IN_MEMORY_TRAINEES.add(new Trainee(
-                    6, "20261006", "Priya Sharma", "priya.sharma@gym.com", "9876543215",
-                    "Universal", "Vegetarian Muscle Definition", 65.0, 58.0, 165.0,
-                    "Universal High-Protein Vegetarian Sculpt",
-                    "Pure vegetarian. Supplemented with plant protein and sprouts.",
-                    "Lead Trainer", 16, "Active"));
-
-            for (Trainee t : IN_MEMORY_TRAINEES) {
-                if (t.getGymId() != null)
-                    TRAINEE_CACHE.put(t.getGymId().toLowerCase(), t);
-                if (t.getEmail() != null)
-                    TRAINEE_CACHE.put(t.getEmail().toLowerCase(), t);
-            }
-
             initialized = true;
         }
     }
@@ -116,26 +61,10 @@ public class TrainerDAO implements GenericDAO<Trainee, Integer> {
             throw new ValidationException("Trainee Full Name is required.");
         }
 
-        // 1. Update in-memory collections immediately (Zero offline lag)
-        boolean existingFound = false;
-        for (int i = 0; i < IN_MEMORY_TRAINEES.size(); i++) {
-            Trainee existing = IN_MEMORY_TRAINEES.get(i);
-            if ((existing.getGymId() != null && existing.getGymId().equalsIgnoreCase(trainee.getGymId())) ||
-                    (existing.getEmail() != null && existing.getEmail().equalsIgnoreCase(trainee.getEmail()))) {
-                trainee.setId(existing.getId());
-                IN_MEMORY_TRAINEES.set(i, trainee);
-                existingFound = true;
-                break;
-            }
-        }
-        if (!existingFound) {
-            trainee.setId(1000 + IN_MEMORY_TRAINEES.size() + 1);
-            IN_MEMORY_TRAINEES.add(trainee);
-        }
-
-        if (trainee.getGymId() != null)
+        // 1. Update cache
+        if (trainee.getGymId() != null && !trainee.getGymId().isEmpty())
             TRAINEE_CACHE.put(trainee.getGymId().toLowerCase(), trainee);
-        if (trainee.getEmail() != null)
+        if (trainee.getEmail() != null && !trainee.getEmail().isEmpty())
             TRAINEE_CACHE.put(trainee.getEmail().toLowerCase(), trainee);
 
         // 2. Persist to MySQL database (Lectures 37-42)
@@ -170,19 +99,26 @@ public class TrainerDAO implements GenericDAO<Trainee, Integer> {
             ps.executeUpdate();
             return true;
         } catch (Exception ex) {
-            System.err.println("Note on DB trainees upsert: " + ex.getMessage() + " (In-memory record updated)");
-            return true;
+            System.err.println("Error saving trainee to DB: " + ex.getMessage());
+            throw new GymException("Failed to persist trainee record to database: " + ex.getMessage(), ex);
         }
     }
 
     /**
      * Syllabus Unit 4 (Lectures 40-42): CRUD Read & ResultSet Mapping
      * Implements GenericDAO.getAll()
+     * Fetches real registered members from 'users' table and joins with 'trainees' table
      */
     @Override
     public List<Trainee> getAll() {
-        List<Trainee> dbList = new ArrayList<>();
-        String sql = "SELECT * FROM trainees ORDER BY id DESC";
+        List<Trainee> list = new ArrayList<>();
+        String sql = "SELECT u.id AS u_id, u.gym_id AS u_gym_id, u.full_name AS u_name, u.email AS u_email, u.phone AS u_phone, "
+                   + "t.id AS t_id, t.body_type, t.fitness_goal, t.current_weight, t.target_weight, t.height_cm, "
+                   + "t.assigned_diet_plan, t.trainer_notes, t.assigned_trainer, t.status "
+                   + "FROM users u "
+                   + "LEFT JOIN trainees t ON (u.gym_id = t.gym_id OR (u.email = t.email AND u.email != '')) "
+                   + "WHERE u.role = 'MEMBER' "
+                   + "ORDER BY u.id ASC";
 
         try (Connection conn = DBConnection.getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql);
@@ -190,39 +126,51 @@ public class TrainerDAO implements GenericDAO<Trainee, Integer> {
 
             while (rs.next()) {
                 Trainee t = new Trainee();
-                t.setId(rs.getInt("id"));
-                t.setGymId(rs.getString("gym_id"));
-                t.setFullName(rs.getString("full_name"));
-                t.setEmail(rs.getString("email"));
-                t.setPhone(rs.getString("phone"));
-                t.setBodyType(rs.getString("body_type"));
-                t.setFitnessGoal(rs.getString("fitness_goal"));
-                t.setCurrentWeight(rs.getDouble("current_weight"));
-                t.setTargetWeight(rs.getDouble("target_weight"));
-                t.setHeightCm(rs.getDouble("height_cm"));
-                t.setAssignedDietPlan(rs.getString("assigned_diet_plan"));
-                t.setTrainerNotes(rs.getString("trainer_notes"));
-                t.setAssignedTrainer(rs.getString("assigned_trainer"));
-                t.setStatus(rs.getString("status"));
-                dbList.add(t);
-            }
-        } catch (Exception ex) {
-            System.err.println("Note fetching trainees from DB: " + ex.getMessage());
-        }
+                int traineeDbId = rs.getInt("t_id");
+                t.setId(traineeDbId > 0 ? traineeDbId : rs.getInt("u_id"));
+                t.setGymId(rs.getString("u_gym_id") != null ? rs.getString("u_gym_id") : "");
+                t.setFullName(rs.getString("u_name") != null ? rs.getString("u_name") : "");
+                t.setEmail(rs.getString("u_email") != null ? rs.getString("u_email") : "");
+                t.setPhone(rs.getString("u_phone") != null ? rs.getString("u_phone") : "");
 
-        // If DB has records, synchronize with cache and return
-        if (!dbList.isEmpty()) {
-            for (Trainee t : dbList) {
-                if (t.getGymId() != null)
+                String bodyType = rs.getString("body_type");
+                t.setBodyType(bodyType != null && !bodyType.trim().isEmpty() ? bodyType : "Mesomorph");
+
+                String goal = rs.getString("fitness_goal");
+                t.setFitnessGoal(goal != null && !goal.trim().isEmpty() ? goal : "General Fitness");
+
+                double curW = rs.getDouble("current_weight");
+                t.setCurrentWeight(curW > 0 ? curW : 70.0);
+
+                double tarW = rs.getDouble("target_weight");
+                t.setTargetWeight(tarW > 0 ? tarW : 75.0);
+
+                double h = rs.getDouble("height_cm");
+                t.setHeightCm(h > 0 ? h : 175.0);
+
+                String diet = rs.getString("assigned_diet_plan");
+                t.setAssignedDietPlan(diet != null && !diet.trim().isEmpty() ? diet : "Standard Maintenance");
+
+                t.setTrainerNotes(rs.getString("trainer_notes") != null ? rs.getString("trainer_notes") : "");
+
+                String trainer = rs.getString("assigned_trainer");
+                t.setAssignedTrainer(trainer != null && !trainer.trim().isEmpty() ? trainer : "Lead Trainer");
+
+                String status = rs.getString("status");
+                t.setStatus(status != null && !status.trim().isEmpty() ? status : "Active");
+
+                list.add(t);
+
+                if (t.getGymId() != null && !t.getGymId().isEmpty())
                     TRAINEE_CACHE.put(t.getGymId().toLowerCase(), t);
-                if (t.getEmail() != null)
+                if (t.getEmail() != null && !t.getEmail().isEmpty())
                     TRAINEE_CACHE.put(t.getEmail().toLowerCase(), t);
             }
-            return dbList;
+        } catch (Exception ex) {
+            System.err.println("Error fetching trainees from DB: " + ex.getMessage());
         }
 
-        // Fallback: return in-memory trainees
-        return new ArrayList<>(IN_MEMORY_TRAINEES);
+        return list;
     }
 
     @Override
@@ -246,8 +194,8 @@ public class TrainerDAO implements GenericDAO<Trainee, Integer> {
             return TRAINEE_CACHE.get(key);
         }
 
-        // 2. Query in-memory list
-        for (Trainee t : IN_MEMORY_TRAINEES) {
+        // 2. Query all trainees (which loads from DB)
+        for (Trainee t : getAll()) {
             if (key.equalsIgnoreCase(t.getGymId()) || key.equalsIgnoreCase(t.getEmail())) {
                 TRAINEE_CACHE.put(key, t);
                 return t;
@@ -328,7 +276,7 @@ public class TrainerDAO implements GenericDAO<Trainee, Integer> {
             return dbList;
         }
 
-        return new ArrayList<>(IN_MEMORY_DIET_PLANS);
+        return DietPlan.getDefaultDietPlans();
     }
 
     /**
@@ -366,21 +314,6 @@ public class TrainerDAO implements GenericDAO<Trainee, Integer> {
             throw new ValidationException("Daily calories must be a positive integer.");
         }
 
-        // In-memory update
-        boolean found = false;
-        for (int i = 0; i < IN_MEMORY_DIET_PLANS.size(); i++) {
-            if (IN_MEMORY_DIET_PLANS.get(i).getPlanName().equalsIgnoreCase(plan.getPlanName())) {
-                plan.setId(IN_MEMORY_DIET_PLANS.get(i).getId());
-                IN_MEMORY_DIET_PLANS.set(i, plan);
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            plan.setId(IN_MEMORY_DIET_PLANS.size() + 1);
-            IN_MEMORY_DIET_PLANS.add(plan);
-        }
-
         // MySQL database persistence
         String sql = "INSERT INTO diet_plans (plan_name, body_type, goal, daily_calories, protein_grams, carbs_grams, "
                 + "fats_grams, water_liters, breakfast, mid_morning_snack, lunch, pre_workout, post_workout, dinner, guidelines) "
@@ -413,8 +346,8 @@ public class TrainerDAO implements GenericDAO<Trainee, Integer> {
             ps.executeUpdate();
             return true;
         } catch (Exception ex) {
-            System.err.println("Note on DB diet plan save: " + ex.getMessage());
-            return true;
+            System.err.println("Error saving diet plan to DB: " + ex.getMessage());
+            throw new GymException("Failed to persist diet plan: " + ex.getMessage(), ex);
         }
     }
 
