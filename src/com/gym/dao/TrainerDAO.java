@@ -13,16 +13,12 @@ import com.gym.config.DBConnection;
 import com.gym.exception.GymException;
 import com.gym.exception.ValidationException;
 import com.gym.model.DietPlan;
-import com.gym.model.Role;
 import com.gym.model.Trainee;
-import com.gym.model.User;
 
 import java.io.*;
 import java.sql.*;
-import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 

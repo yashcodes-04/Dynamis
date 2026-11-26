@@ -8,7 +8,6 @@ import com.gym.model.Role;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.plaf.basic.BasicComboBoxUI;
 import java.awt.*;
 
 public class RegisterPanel extends JPanel {

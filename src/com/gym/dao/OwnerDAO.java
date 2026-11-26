@@ -13,7 +13,6 @@ import com.gym.config.DBConnection;
 import com.gym.exception.GymException;
 import com.gym.exception.ValidationException;
 import com.gym.model.*;
-import com.gym.util.PasswordUtil;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -25,7 +24,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 public class OwnerDAO {

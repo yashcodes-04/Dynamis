@@ -26,7 +26,6 @@ import javax.swing.border.LineBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.io.File;
-import java.util.Comparator;
 import java.util.List;
 
 public class OwnerDashboard extends BaseDashboard {
