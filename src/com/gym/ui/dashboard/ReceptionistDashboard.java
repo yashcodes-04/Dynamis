@@ -68,6 +68,7 @@ public class ReceptionistDashboard extends BaseDashboard {
     private JLabel verifiedEmailLbl;
     private JLabel verifiedPhoneLbl;
     private JLabel verifiedRoleLbl;
+    private JLabel verifiedEligibilityLbl;
     private JPanel memberProfileCard;
     private User currentVerifiedMember;
 
@@ -297,7 +298,7 @@ public class ReceptionistDashboard extends BaseDashboard {
                 new EmptyBorder(16, 18, 16, 18)
         ));
         memberProfileCard.setAlignmentX(Component.LEFT_ALIGNMENT);
-        memberProfileCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 260));
+        memberProfileCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 285));
 
         verifiedGymIdLbl = new JLabel("Gym ID: Not Verified");
         verifiedGymIdLbl.setFont(new Font("Segoe UI", Font.BOLD, 18));
@@ -319,6 +320,10 @@ public class ReceptionistDashboard extends BaseDashboard {
         verifiedRoleLbl.setFont(Theme.FONT_BOLD);
         verifiedRoleLbl.setForeground(Theme.ROLE_MEMBER_COLOR);
 
+        verifiedEligibilityLbl = new JLabel("Membership Status: Enter a Gym ID or Email to check");
+        verifiedEligibilityLbl.setFont(Theme.FONT_BOLD);
+        verifiedEligibilityLbl.setForeground(Theme.TEXT_MUTED);
+
         memberProfileCard.add(verifiedGymIdLbl);
         memberProfileCard.add(Box.createVerticalStrut(10));
         memberProfileCard.add(verifiedNameLbl);
@@ -328,6 +333,8 @@ public class ReceptionistDashboard extends BaseDashboard {
         memberProfileCard.add(verifiedPhoneLbl);
         memberProfileCard.add(Box.createVerticalStrut(6));
         memberProfileCard.add(verifiedRoleLbl);
+        memberProfileCard.add(Box.createVerticalStrut(10));
+        memberProfileCard.add(verifiedEligibilityLbl);
 
         verifyCard.add(title1);
         verifyCard.add(Box.createVerticalStrut(4));
@@ -424,13 +431,29 @@ public class ReceptionistDashboard extends BaseDashboard {
                 try {
                     User user = get();
                     if (user != null) {
-                        currentVerifiedMember = user;
                         verifiedGymIdLbl.setText("Gym ID: " + user.getGymId());
                         verifiedNameLbl.setText("Full Name: " + user.getFullName());
                         verifiedEmailLbl.setText("Email: " + user.getEmail());
                         verifiedPhoneLbl.setText("Phone: " + (user.getPhone() != null && !user.getPhone().isEmpty() ? user.getPhone() : "Not provided"));
                         verifiedRoleLbl.setText("Account Role: " + user.getRole().getDisplayName());
-                        setFeeStatus("Member verified! You can now proceed to payment.", false);
+
+                        if (user.getRole() == Role.MEMBER) {
+                            currentVerifiedMember = user;
+                            verifiedRoleLbl.setForeground(Theme.ROLE_MEMBER_COLOR);
+                            verifiedEligibilityLbl.setText("Membership Status: You can extend your membership.");
+                            verifiedEligibilityLbl.setForeground(Theme.SUCCESS_COLOR);
+                            submitFeeBtn.setEnabled(true);
+                            setFeeStatus("Member verified! You can extend your membership.", false);
+                        } else {
+                            currentVerifiedMember = null;
+                            String roleLabel = user.getRole() == Role.TRAINER ? "Trainer"
+                                    : (user.getRole() == Role.OWNER ? "Owner" : "Receptionist");
+                            verifiedRoleLbl.setForeground(Theme.ERROR_COLOR);
+                            verifiedEligibilityLbl.setText("Membership Status: You are a " + roleLabel + " — you can't extend membership.");
+                            verifiedEligibilityLbl.setForeground(Theme.ERROR_COLOR);
+                            submitFeeBtn.setEnabled(false);
+                            setFeeStatus("You are a " + roleLabel + " — you can't extend membership.", true);
+                        }
                     } else {
                         currentVerifiedMember = null;
                         verifiedGymIdLbl.setText("Gym ID: Not Found");
@@ -438,6 +461,10 @@ public class ReceptionistDashboard extends BaseDashboard {
                         verifiedEmailLbl.setText("Email: -");
                         verifiedPhoneLbl.setText("Phone: -");
                         verifiedRoleLbl.setText("Account Role: -");
+                        verifiedRoleLbl.setForeground(Theme.TEXT_MUTED);
+                        verifiedEligibilityLbl.setText("Membership Status: No account found.");
+                        verifiedEligibilityLbl.setForeground(Theme.ERROR_COLOR);
+                        submitFeeBtn.setEnabled(false);
                         setFeeStatus("No member found matching: " + query, true);
                     }
                 } catch (Exception ex) {
@@ -450,7 +477,13 @@ public class ReceptionistDashboard extends BaseDashboard {
 
     private void handleFeeSubmission() {
         if (currentVerifiedMember == null) {
-            setFeeStatus("Please verify a member first (Step 1) before processing fee.", true);
+            setFeeStatus("Please verify a valid Gym Member first (Step 1) before processing fee.", true);
+            return;
+        }
+        if (currentVerifiedMember.getRole() != Role.MEMBER) {
+            String roleLabel = currentVerifiedMember.getRole() == Role.TRAINER ? "Trainer"
+                    : (currentVerifiedMember.getRole() == Role.OWNER ? "Owner" : "Receptionist");
+            setFeeStatus("You are a " + roleLabel + " — you can't extend membership.", true);
             return;
         }
 
