@@ -18,6 +18,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 
 public class UserDAO {
 
@@ -51,11 +53,21 @@ public class UserDAO {
     }
 
     /**
-     * Retrieves any one registered trainer from the database (random or first).
+     * Option 2: Least-Loaded Balancing (Smart Auto-Assignment)
+     * Queries all registered trainers and calculates how many active members each trainer currently has.
+     * Selects the trainer with the lowest client workload to prevent overloading any one trainer.
+     * If counts are tied, breaks tie deterministically by registration order (t.id ASC).
      * Returns null if no trainer is registered in the system yet.
      */
-    public String getRandomTrainerName() {
-        String query = "SELECT full_name FROM users WHERE role = 'TRAINER' ORDER BY RAND() LIMIT 1";
+    public String getLeastLoadedTrainerName() {
+        String query = "SELECT t.full_name, COUNT(m.id) AS member_count "
+                     + "FROM users t "
+                     + "LEFT JOIN users m ON m.role = 'MEMBER' AND LOWER(TRIM(m.assigned_trainer)) = LOWER(TRIM(t.full_name)) "
+                     + "WHERE t.role = 'TRAINER' "
+                     + "GROUP BY t.id, t.full_name "
+                     + "ORDER BY member_count ASC, t.id ASC "
+                     + "LIMIT 1";
+
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(query);
              ResultSet rs = ps.executeQuery()) {
@@ -66,31 +78,76 @@ public class UserDAO {
                 }
             }
         } catch (Exception ex) {
-            System.err.println("Note reading registered trainers: " + ex.getMessage());
+            System.err.println("Note querying least-loaded trainer: " + ex.getMessage());
+        }
+
+        return getFirstAvailableTrainerFallback();
+    }
+
+    private String getFirstAvailableTrainerFallback() {
+        String query = "SELECT full_name FROM users WHERE role = 'TRAINER' ORDER BY id ASC LIMIT 1";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(query);
+             ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                String name = rs.getString("full_name");
+                if (name != null && !name.trim().isEmpty()) {
+                    return name.trim();
+                }
+            }
+        } catch (Exception ex) {
+            System.err.println("Note reading fallback trainer: " + ex.getMessage());
         }
         return null;
     }
 
+    public String getRandomTrainerName() {
+        return getLeastLoadedTrainerName();
+    }
+
     /**
-     * When a new trainer registers, assigns them to any existing members who do NOT have an assigned trainer yet.
+     * When a new trainer registers, distributes any existing members who do NOT have an assigned trainer yet
+     * across trainers using least-loaded balancing.
      * Members who already have a real trainer assigned are left unchanged.
      */
     public void assignTrainerToUnassignedMembers(String trainerName) {
-        if (trainerName == null || trainerName.trim().isEmpty()) return;
         try (Connection conn = DBConnection.getConnection()) {
-            String updateUsers = "UPDATE users SET assigned_trainer = ? WHERE role = 'MEMBER' AND (assigned_trainer IS NULL OR assigned_trainer = '')";
-            try (PreparedStatement ps = conn.prepareStatement(updateUsers)) {
-                ps.setString(1, trainerName.trim());
-                int updated = ps.executeUpdate();
-                if (updated > 0) {
-                    System.out.println("Assigned registered trainer '" + trainerName + "' to " + updated + " member(s).");
+            String findUnassigned = "SELECT id, email, gym_id FROM users WHERE role = 'MEMBER' AND (assigned_trainer IS NULL OR assigned_trainer = '') ORDER BY id ASC";
+            List<Integer> unassignedIds = new java.util.ArrayList<>();
+            List<String> unassignedEmails = new java.util.ArrayList<>();
+            List<String> unassignedGymIds = new java.util.ArrayList<>();
+
+            try (PreparedStatement ps = conn.prepareStatement(findUnassigned);
+                 ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    unassignedIds.add(rs.getInt("id"));
+                    unassignedEmails.add(rs.getString("email"));
+                    unassignedGymIds.add(rs.getString("gym_id"));
                 }
             }
 
-            String updateTrainees = "UPDATE trainees SET assigned_trainer = ? WHERE assigned_trainer IS NULL OR assigned_trainer = '' OR assigned_trainer = 'Lead Trainer'";
-            try (PreparedStatement ps = conn.prepareStatement(updateTrainees)) {
-                ps.setString(1, trainerName.trim());
-                ps.executeUpdate();
+            for (int i = 0; i < unassignedIds.size(); i++) {
+                int memberId = unassignedIds.get(i);
+                String email = unassignedEmails.get(i);
+                String gymId = unassignedGymIds.get(i);
+
+                String assigned = getLeastLoadedTrainerName();
+                if (assigned == null || assigned.trim().isEmpty()) {
+                    assigned = trainerName;
+                }
+                if (assigned != null && !assigned.trim().isEmpty()) {
+                    try (PreparedStatement updatePs = conn.prepareStatement("UPDATE users SET assigned_trainer = ? WHERE id = ?")) {
+                        updatePs.setString(1, assigned);
+                        updatePs.setInt(2, memberId);
+                        updatePs.executeUpdate();
+                    }
+                    try (PreparedStatement updateTr = conn.prepareStatement("UPDATE trainees SET assigned_trainer = ? WHERE LOWER(email) = ? OR (LOWER(gym_id) = ? AND gym_id != '')")) {
+                        updateTr.setString(1, assigned);
+                        updateTr.setString(2, email != null ? email.toLowerCase() : "");
+                        updateTr.setString(3, gymId != null ? gymId.toLowerCase() : "");
+                        updateTr.executeUpdate();
+                    }
+                }
             }
         } catch (Exception ex) {
             System.err.println("Note assigning trainer to unassigned members: " + ex.getMessage());
