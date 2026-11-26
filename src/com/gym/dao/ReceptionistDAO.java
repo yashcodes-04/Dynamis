@@ -8,6 +8,7 @@ package com.gym.dao;
 
 import com.gym.config.DBConnection;
 import com.gym.exception.MemberNotFoundException;
+import com.gym.exception.ValidationException;
 import com.gym.model.AttendanceRecord;
 import com.gym.model.FeePayment;
 import com.gym.model.Role;
@@ -305,26 +306,77 @@ public class ReceptionistDAO implements GenericDAO<FeePayment, Integer> {
     /**
      * Marks member present in the attendance table using their unique Gym ID.
      * Demonstrates Custom Exception throwing (Unit 1, Lecture 3).
+     * Rejects check-in if the member does not have an active (unexpired) membership.
      */
-    public AttendanceRecord recordAttendanceByGymId(String gymIdOrEmail) throws SQLException, MemberNotFoundException {
+    public AttendanceRecord recordAttendanceByGymId(String gymIdOrEmail) throws SQLException, MemberNotFoundException, ValidationException {
         User member = findMemberByGymIdOrEmail(gymIdOrEmail);
         if (member == null) {
             // Throws custom checked exception (Lecture 3)
-            throw new MemberNotFoundException("Invalid Gym ID or Email: No member registered matching '" + gymIdOrEmail + "'.");
+            throw new MemberNotFoundException("You aren't a member. No member registered matching '" + gymIdOrEmail + "'.");
+        }
+        if (member.getRole() != Role.MEMBER) {
+            throw new ValidationException("You aren't a member (" + member.getFullName() + " is registered as " + member.getRole() + ").");
         }
 
-        String insertSQL = "INSERT INTO attendance (gym_id, member_name, member_email) VALUES (?, ?, ?)";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(insertSQL, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setString(1, member.getGymId());
-            ps.setString(2, member.getFullName());
-            ps.setString(3, member.getEmail());
+        try (Connection conn = DBConnection.getConnection()) {
+            // Verify live active membership status directly from DB
+            LocalDate activeEndDate = getLiveActiveMembershipEndDate(conn, member);
+            if (activeEndDate == null) {
+                throw new ValidationException("Attendance blocked: " + member.getFullName() + " (" + member.getGymId() + ") has no active membership.");
+            }
+            if (activeEndDate.isBefore(LocalDate.now())) {
+                throw new ValidationException("Attendance blocked: " + member.getFullName() + "'s membership expired on " + activeEndDate + ".");
+            }
 
-            int rows = ps.executeUpdate();
-            if (rows > 0) {
-                try (ResultSet keys = ps.getGeneratedKeys()) {
-                    int newId = keys.next() ? keys.getInt(1) : 0;
-                    return new AttendanceRecord(newId, member.getGymId(), member.getFullName(), member.getEmail(), new Timestamp(System.currentTimeMillis()));
+            String insertSQL = "INSERT INTO attendance (gym_id, member_name, member_email) VALUES (?, ?, ?)";
+            try (PreparedStatement ps = conn.prepareStatement(insertSQL, Statement.RETURN_GENERATED_KEYS)) {
+                ps.setString(1, member.getGymId());
+                ps.setString(2, member.getFullName());
+                ps.setString(3, member.getEmail());
+
+                int rows = ps.executeUpdate();
+                if (rows > 0) {
+                    try (ResultSet keys = ps.getGeneratedKeys()) {
+                        int newId = keys.next() ? keys.getInt(1) : 0;
+                        return new AttendanceRecord(newId, member.getGymId(), member.getFullName(), member.getEmail(), new Timestamp(System.currentTimeMillis()));
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Checks live membership_end_date from users (and falls back to fee_payments.renewal_due_date).
+     * Returns null if no membership plan has been purchased.
+     */
+    private LocalDate getLiveActiveMembershipEndDate(Connection conn, User member) throws SQLException {
+        String userSql = "SELECT membership_plan, membership_end_date FROM users WHERE id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(userSql)) {
+            ps.setInt(1, member.getId());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String plan = rs.getString("membership_plan");
+                    java.sql.Date endDate = rs.getDate("membership_end_date");
+                    if (plan != null && !plan.trim().isEmpty() && !plan.equalsIgnoreCase("None") && endDate != null) {
+                        return endDate.toLocalDate();
+                    }
+                }
+            }
+        }
+
+        String feeSql = "SELECT renewal_due_date FROM fee_payments "
+                + "WHERE (LOWER(gym_id) = ? AND gym_id != '') OR LOWER(member_email) = ? "
+                + "ORDER BY payment_date DESC, id DESC LIMIT 1";
+        try (PreparedStatement ps = conn.prepareStatement(feeSql)) {
+            ps.setString(1, member.getGymId() != null ? member.getGymId().trim().toLowerCase() : "");
+            ps.setString(2, member.getEmail() != null ? member.getEmail().trim().toLowerCase() : "");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    java.sql.Date dueDate = rs.getDate("renewal_due_date");
+                    if (dueDate != null) {
+                        return dueDate.toLocalDate();
+                    }
                 }
             }
         }

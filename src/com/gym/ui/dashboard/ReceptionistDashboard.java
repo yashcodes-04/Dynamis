@@ -935,8 +935,8 @@ public class ReceptionistDashboard extends BaseDashboard {
                     attendanceStatusLabel.setForeground(Theme.ERROR_COLOR);
                 } catch (ExecutionException e) {
                     Throwable cause = e.getCause();
-                    // Catching custom exception (Lecture 3)
-                    if (cause instanceof MemberNotFoundException) {
+                    // Catching custom exceptions (Lecture 3)
+                    if (cause instanceof MemberNotFoundException || cause instanceof com.gym.exception.ValidationException) {
                         attendanceStatusLabel.setText(cause.getMessage());
                     } else {
                         attendanceStatusLabel.setText("Check-in Error: " + cause.getMessage());
